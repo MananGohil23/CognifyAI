@@ -26,15 +26,15 @@ TOP_K_DENSE = 20   # initial dense retrieval pool
 TOP_K_SPARSE = 20  # BM25 candidates
 TOP_K_RERANK = 8   # after reranking
 
-SYSTEM_PROMPT = """You are a compliance analyst AI for Indian banking regulation.
-You ONLY answer using the provided source passages from RBI publications.
-You MUST cite every claim with [PUB · EDITION · SECTION] immediately after the claim.
+SYSTEM_PROMPT = """You are an authoritative enterprise knowledge and compliance AI.
+You ONLY answer using the provided source passages from ingested reference documents.
+You MUST cite every claim with [PUB · EDITION · §SECTION] immediately after the claim.
 Do NOT produce meta commentary about the pipeline, confidence, or system behavior.
 Do NOT use hedging/disclaimer phrases like "I cannot find", "insufficient information", or "cannot determine"
 if any relevant facts are present in sources. Prefer extractive factual summaries.
-If evidence exists, provide the latest available numeric/qualitative indicators directly from sources.
+If evidence exists, provide the latest available numeric/qualitative facts directly from sources.
 Only say evidence is unavailable when none of the sources contain relevant facts.
-Never fabricate statistics, dates, or regulatory language."""
+Never fabricate statistics, dates, or unsubstantiated claims."""
 
 
 def _is_abstaining_answer(text: str) -> bool:
@@ -184,10 +184,18 @@ def generate_with_attribution(query: str, context_hits: list[dict]) -> dict:
     Instructs model to cite every claim as [PUB · EDITION · SECTION].
     Returns {answer, claims: [{text, citation}]}.
     """
+    if not context_hits:
+        return {
+            "answer": "No relevant source documents found in knowledge base.",
+            "claims": [],
+            "model": "extractive-fallback",
+            "sources_used": 0,
+        }
+
     context_blocks = []
     for i, hit in enumerate(context_hits):
         m = hit["metadata"]
-        citation = f"[{m['pub_name']} · {m['edition']} · §{m['section_id']}]"
+        citation = f"[{m.get('pub_name', 'DOC')} · {m.get('edition', 'v1')} · §{m.get('section_id', '1')}]"
         context_blocks.append(
             f"SOURCE {i+1} {citation}:\n{hit['text'][:800]}"
         )
@@ -202,51 +210,68 @@ def generate_with_attribution(query: str, context_hits: list[dict]) -> dict:
     llm_api_key = (os.getenv("GROQ_API_KEY")
                    or os.getenv("GROK_API_KEY") or "").strip()
     llm_api_key = llm_api_key.strip('"').strip("'")
-    if not llm_api_key:
-        raise ValueError(
-            "GROQ_API_KEY is not set. Please set it before querying.")
 
-    client = OpenAI(api_key=llm_api_key, base_url=llm_base_url)
-    user_prompt = (
-        f"QUERY: {query}\n\n"
-        f"SOURCES:\n{context_str}\n\n"
-        "Return only source-grounded factual claims. "
-        "Each sentence MUST end with a citation in this exact format: [PUB · EDITION · §SECTION]. "
-        "Prefer concise extractive statements with numbers/dates directly present in sources."
-    )
+    raw_answer = None
+    model_name = llm_model
 
-    response = client.chat.completions.create(
-        model=llm_model,
-        messages=[
-            {"role": "system", "content": SYSTEM_PROMPT},
-            {"role": "user", "content": user_prompt},
-        ],
-        temperature=0.1,
-        max_tokens=1500,
-    )
-    raw_answer = response.choices[0].message.content
+    if llm_api_key:
+        try:
+            client = OpenAI(api_key=llm_api_key, base_url=llm_base_url)
+            user_prompt = (
+                f"QUERY: {query}\n\n"
+                f"SOURCES:\n{context_str}\n\n"
+                "Return only source-grounded factual claims. "
+                "Each sentence MUST end with a citation in this exact format: [PUB · EDITION · §SECTION]. "
+                "Prefer concise extractive statements with numbers/dates directly present in sources."
+            )
 
-    # Retry once with stricter extractive instructions if model abstains
-    # despite relevant retrieved context.
-    if context_hits and _is_abstaining_answer(raw_answer):
-        retry_prompt = (
-            f"QUERY: {query}\n\n"
-            f"SOURCES:\n{context_str}\n\n"
-            "Do NOT abstain. Extract concrete facts directly from sources. "
-            "Use 3-6 short factual sentences. "
-            "Every sentence MUST end with [PUB · EDITION · §SECTION]. "
-            "Do not include any sentence without citation."
-        )
-        retry = client.chat.completions.create(
-            model=llm_model,
-            messages=[
-                {"role": "system", "content": SYSTEM_PROMPT},
-                {"role": "user", "content": retry_prompt},
-            ],
-            temperature=0.0,
-            max_tokens=1200,
-        )
-        raw_answer = retry.choices[0].message.content
+            response = client.chat.completions.create(
+                model=llm_model,
+                messages=[
+                    {"role": "system", "content": SYSTEM_PROMPT},
+                    {"role": "user", "content": user_prompt},
+                ],
+                temperature=0.1,
+                max_tokens=1500,
+            )
+            raw_answer = response.choices[0].message.content
+
+            # Retry once with stricter extractive instructions if model abstains
+            # despite relevant retrieved context.
+            if context_hits and _is_abstaining_answer(raw_answer):
+                retry_prompt = (
+                    f"QUERY: {query}\n\n"
+                    f"SOURCES:\n{context_str}\n\n"
+                    "Do NOT abstain. Extract concrete facts directly from sources. "
+                    "Use 3-6 short factual sentences. "
+                    "Every sentence MUST end with [PUB · EDITION · §SECTION]. "
+                    "Do not include any sentence without citation."
+                )
+                retry = client.chat.completions.create(
+                    model=llm_model,
+                    messages=[
+                        {"role": "system", "content": SYSTEM_PROMPT},
+                        {"role": "user", "content": retry_prompt},
+                    ],
+                    temperature=0.0,
+                    max_tokens=1200,
+                )
+                raw_answer = retry.choices[0].message.content
+        except Exception as e:
+            logger.warning("LLM generation unavailable or failed (%s); falling back to extractive synthesis.", e)
+            raw_answer = None
+
+    # Fallback to extractive synthesis from retrieved source chunks if LLM is unavailable
+    if not raw_answer or not raw_answer.strip():
+        model_name = "extractive-synthesis"
+        extractive_sentences = []
+        for hit in context_hits[:3]:
+            m = hit["metadata"]
+            citation = f"[{m.get('pub_name', 'DOC')} · {m.get('edition', 'v1')} · §{m.get('section_id', '1')}]"
+            raw_sents = [s.strip() for s in re.split(r"(?<=[.!?])\s+", hit["text"].strip()) if len(s.strip()) > 25]
+            for s in raw_sents[:2]:
+                extractive_sentences.append(f"{s} {citation}")
+        raw_answer = " ".join(extractive_sentences) if extractive_sentences else "No relevant facts found in documents."
 
     # Parse inline citations → structured claim list
     claims = _parse_claims(raw_answer, context_hits)
@@ -254,7 +279,7 @@ def generate_with_attribution(query: str, context_hits: list[dict]) -> dict:
     return {
         "answer": raw_answer,
         "claims": claims,
-        "model": llm_model,
+        "model": model_name,
         "sources_used": len(context_hits),
     }
 
@@ -268,7 +293,7 @@ def _parse_claims(answer: str, context_hits: list[dict]) -> list[dict]:
     answer = (answer or "").replace("Â·", "·").replace("Â§", "§")
     citation_re = re.compile(
         r"(?P<sentence>[^\n\[]+?)\s*"
-        r"\[(?P<pub>[A-Z]+)\s*·\s*(?P<edition>[^·]+)\s*·\s*§(?P<section>[^\]]+)\]\.?",
+        r"\[(?P<pub>[^\[\]·]+)\s*·\s*(?P<edition>[^\[\]·]+)\s*·\s*§?(?P<section>[^\]]+)\]\.?",
         re.MULTILINE,
     )
     claims = []

@@ -3,13 +3,14 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>CognifyAI · Governance Framework</title>
+    <title>P6 · AI Hallucination Confidence Labeler | TCS Tech Day</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=JetBrains+Mono:wght@400;500&family=Syne:wght@400;600;700;800&display=swap"
+      href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=JetBrains+Mono:wght@400;500;600;700&family=Syne:wght@400;500;600;700;800&display=swap"
       rel="stylesheet"
     />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
     <style>
       *,
@@ -21,39 +22,44 @@
       }
 
       :root {
-        --bg: #e6f1ff;
+        --bg: #f8fafc;
         --surface: #ffffff;
-        --surface2: #f2f7ff;
-        --border: rgba(27, 71, 129, 0.16);
-        --border-bright: rgba(27, 71, 129, 0.32);
-        --text: #112643;
-        --text-muted: #4f6789;
-        --text-dim: #7f96b4;
-        --accent: #85bb65;
-        --accent-glow: rgba(47, 111, 237, 0.12);
-        --safe: #1a7f37;
-        --safe-bg: rgba(26, 127, 55, 0.1);
-        --review: #b45309;
-        --review-bg: rgba(180, 83, 9, 0.1);
-        --danger: #c2413a;
-        --danger-bg: rgba(194, 65, 58, 0.1);
-        --gold: #9f7a20;
+        --surface2: #f0fdf4;
+        --surface3: #f8fafc;
+        --border: #e2e8f0;
+        --border-bright: rgba(16, 185, 129, 0.45);
+        --text: #0f172a;
+        --text-muted: #475569;
+        --text-dim: #94a3b8;
+
+        --accent: #059669;
+        --accent-hover: #047857;
+        --accent-light: #ecfdf5;
+        --accent-glow: rgba(16, 185, 129, 0.25);
+
+        --certain: #059669;
+        --certain-bg: #ecfdf5;
+        --certain-border: #a7f3d0;
+
+        --uncertain: #d97706;
+        --uncertain-bg: #fffbeb;
+        --uncertain-border: #fde68a;
+
+        --verify: #dc2626;
+        --verify-bg: #fef2f2;
+        --verify-border: #fecaca;
+
         --mono: "JetBrains Mono", monospace;
         --display: "DM Serif Display", serif;
         --sans: "Syne", sans-serif;
       }
 
-      html {
-        scroll-behavior: smooth;
-      }
-
       body {
-        background: linear-gradient(
-          180deg,
-          #dbeaff 0%,
-          var(--bg) 46%,
-          #eef5ff 100%
-        );
+        background-color: var(--bg);
+        background-image:
+          radial-gradient(at 0% 0%, rgba(16, 185, 129, 0.12) 0px, transparent 50%),
+          radial-gradient(at 100% 100%, rgba(5, 150, 105, 0.08) 0px, transparent 50%),
+          radial-gradient(at 50% 50%, rgba(240, 253, 244, 0.5) 0px, transparent 100%);
         color: var(--text);
         font-family: var(--sans);
         font-size: 15px;
@@ -61,2543 +67,1120 @@
         min-height: 100vh;
       }
 
-      /* ── Noise texture overlay ── */
-      body::before {
-        content: "";
-        position: fixed;
-        inset: 0;
-        background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.035'/%3E%3C/svg%3E");
-        pointer-events: none;
-        z-index: 0;
-      }
-
-      /* ── Header ── */
       header {
         position: sticky;
         top: 0;
         z-index: 100;
-        background: rgba(245, 250, 255, 0.82);
-        backdrop-filter: blur(20px);
-        border-bottom: 1px solid var(--border);
+        background: rgba(255, 255, 255, 0.92);
+        backdrop-filter: blur(16px);
+        border-bottom: 1px solid rgba(16, 185, 129, 0.2);
         padding: 0 2rem;
         display: flex;
         align-items: center;
         justify-content: space-between;
-        height: 60px;
+        height: 68px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.02);
       }
 
       .logo {
         display: flex;
         align-items: center;
-        gap: 10px;
+        gap: 12px;
       }
 
       .logo-mark {
-        width: 28px;
-        height: 28px;
-        background: var(--accent);
-        border-radius: 6px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-family: var(--mono);
-        font-size: 11px;
-        color: #fff;
-        font-weight: 500;
-      }
-
-      .logo-text {
-        font-family: var(--sans);
-        font-weight: 700;
-        font-size: 16px;
-        letter-spacing: -0.02em;
-        color: var(--text);
-      }
-
-      .logo-text span {
-        color: var(--accent);
-      }
-
-      nav {
-        display: flex;
-        gap: 1.5rem;
-      }
-      nav a {
-        font-size: 13px;
-        color: var(--text-muted);
-        text-decoration: none;
-        transition: color 0.2s;
-        font-weight: 600;
-        letter-spacing: 0.04em;
-        text-transform: uppercase;
-      }
-      nav a:hover {
-        color: var(--text);
-      }
-
-      /* ── Hero ── */
-      .hero {
-        position: relative;
-        padding: 80px 2rem 60px;
-        text-align: center;
-        overflow: hidden;
-      }
-
-      .hero-grid {
-        position: absolute;
-        inset: 0;
-        background-image:
-          linear-gradient(rgba(47, 111, 237, 0.06) 1px, transparent 1px),
-          linear-gradient(90deg, rgba(47, 111, 237, 0.06) 1px, transparent 1px);
-        background-size: 40px 40px;
-        mask-image: radial-gradient(
-          ellipse at center,
-          black 0%,
-          transparent 70%
-        );
-      }
-
-      .hero-tag {
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        background: var(--accent-glow);
-        border: 1px solid rgba(47, 111, 237, 0.34);
-        border-radius: 100px;
-        padding: 4px 14px;
-        font-size: 12px;
-        color: var(--accent);
-        font-weight: 600;
-        letter-spacing: 0.06em;
-        text-transform: uppercase;
-        margin-bottom: 24px;
-      }
-
-      .dot {
-        width: 6px;
-        height: 6px;
-        background: var(--safe);
-        border-radius: 50%;
-        animation: pulse 2s infinite;
-      }
-      @keyframes pulse {
-        0%,
-        100% {
-          opacity: 1;
-          transform: scale(1);
-        }
-        50% {
-          opacity: 0.5;
-          transform: scale(0.8);
-        }
-      }
-
-      h1 {
-        font-family: var(--display);
-        font-size: clamp(2.5rem, 6vw, 4.5rem);
-        line-height: 1.1;
-        letter-spacing: -0.02em;
-        color: var(--text);
-        max-width: 800px;
-        margin: 0 auto 20px;
-      }
-
-      /* Animated Gradient Text */
-      .gradient-text {
-        font-size: 80px;
-        display: inline-block;
-        background: linear-gradient(90deg, #105a37, #00836d, #278664, #79a471);
-        background-size: 300% 100%;
-        -webkit-background-clip: text;
-        background-clip: text;
-        -webkit-text-fill-color: transparent;
-        font-style: bold italic;
-        animation: gradient-flow 8s infinite;
-      }
-
-      @keyframes gradient-flow {
-        0% {
-          background-position: 0% 50%;
-        }
-        50% {
-          background-position: 100% 50%;
-        }
-        100% {
-          background-position: 0% 50%;
-        }
-      }
-
-      .hero-sub {
-        font-size: 16px;
-        color: var(--text-muted);
-        max-width: 600px;
-        margin: 0 auto 40px;
-        line-height: 1.7;
-      }
-
-      .hero-badges {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 12px;
-        flex-wrap: wrap;
-        overflow: visible;
-      }
-
-      .badge {
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        background: var(--surface);
-        border: 1px solid var(--border);
-        border-radius: 8px;
-        padding: 6px 14px;
-        font-size: 12px;
-        font-weight: 600;
-        color: var(--text-muted);
-        letter-spacing: 0.02em;
-        position: relative;
-        transform-origin: center center;
-        will-change: transform;
-        transition:
-          transform 0.12s ease,
-          box-shadow 0.12s ease;
-      }
-
-      .badge.pub {
-        color: var(--accent);
-        border-color: rgba(47, 111, 237, 0.24);
-        background: rgba(47, 111, 237, 0.08);
-      }
-
-      /* ── Main layout ── */
-      main {
-        max-width: 1200px;
-        margin: 0 auto;
-        padding: 0 2rem 4rem;
-      }
-
-      /* ── Section titles ── */
-      .section-label {
-        font-size: 11px;
-        font-weight: 700;
-        letter-spacing: 0.1em;
-        text-transform: uppercase;
-        color: var(--text-dim);
-        margin-bottom: 16px;
-        display: flex;
-        align-items: center;
-        gap: 8px;
-      }
-      .section-label::before {
-        content: "";
-        display: block;
-        width: 20px;
-        height: 1px;
-        background: var(--text-dim);
-      }
-
-      /* ── Query panel ── */
-      .query-panel {
-        background: var(--surface);
-        border: 1px solid var(--border);
-        border-radius: 16px;
-        padding: 24px;
-        margin-bottom: 24px;
-      }
-
-      .query-row {
-        display: flex;
-        gap: 12px;
-        align-items: flex-start;
-      }
-
-      textarea {
-        flex: 1;
-        background: var(--surface2);
-        border: 1px solid var(--border);
-        border-radius: 10px;
-        color: var(--text);
-        font-family: var(--sans);
-        font-size: 14px;
-        padding: 14px 16px;
-        resize: vertical;
-        min-height: 80px;
-        outline: none;
-        transition: border-color 0.2s;
-        line-height: 1.6;
-      }
-      textarea:focus {
-        border-color: var(--accent);
-      }
-      textarea::placeholder {
-        color: var(--text-muted);
-      }
-
-      .btn {
-        background: var(--accent);
-        color: #fff;
-        border: none;
-        border-radius: 10px;
-        padding: 14px 24px;
-        font-family: var(--sans);
-        font-size: 14px;
-        font-weight: 700;
-        cursor: pointer;
-        white-space: nowrap;
-        transition:
-          opacity 0.2s,
-          transform 0.1s;
-        letter-spacing: 0.01em;
-      }
-      .btn:hover {
-        opacity: 0.9;
-      }
-      .btn:active {
-        transform: scale(0.98);
-      }
-      .btn:disabled {
-        opacity: 0.4;
-        cursor: not-allowed;
-      }
-
-      .btn-ghost {
-        background: transparent;
-        color: var(--text-muted);
-        border: 1px solid var(--border);
-      }
-      .btn-ghost:hover {
-        border-color: var(--border-bright);
-        color: var(--text);
-        background: transparent;
-      }
-
-      .filter-row {
-        display: flex;
-        gap: 8px;
-        margin-top: 12px;
-        flex-wrap: wrap;
-      }
-
-      .filter-chip {
-        background: none;
-        border: 1px solid var(--border);
-        border-radius: 100px;
-        color: var(--text-muted);
-        font-size: 12px;
-        font-family: var(--sans);
-        font-weight: 600;
-        padding: 4px 14px;
-        cursor: pointer;
-        transition: all 0.15s;
-        letter-spacing: 0.03em;
-      }
-      .filter-chip.active {
-        background: var(--accent-glow);
-        border-color: rgba(47, 111, 237, 0.45);
-        color: var(--accent);
-      }
-      .filter-chip:hover:not(.active) {
-        border-color: var(--border-bright);
-        color: var(--text);
-      }
-
-      .sample-queries {
-        margin-top: 16px;
-        display: flex;
-        flex-wrap: wrap;
-        gap: 8px;
-      }
-
-      .sample-btn {
-        background: none;
-        border: 1px solid var(--border);
-        border-radius: 8px;
-        color: var(--text-muted);
-        font-size: 12px;
-        font-family: var(--sans);
-        padding: 6px 12px;
-        cursor: pointer;
-        transition: all 0.15s;
-        text-align: left;
-      }
-      .sample-btn:hover {
-        border-color: var(--border-bright);
-        color: var(--text);
-        background: var(--surface2);
-      }
-
-      /* ── Results ── */
-      #results {
-        display: none;
-      }
-
-      /* Trust gate banner */
-      .trust-banner {
-        border-radius: 12px;
-        padding: 20px 24px;
-        border: 1px solid;
-        margin-bottom: 20px;
-        display: flex;
-        align-items: center;
-        gap: 16px;
-      }
-      .trust-banner.safe {
-        background: var(--safe-bg);
-        border-color: rgba(34, 197, 94, 0.2);
-      }
-      .trust-banner.review {
-        background: var(--review-bg);
-        border-color: rgba(245, 158, 11, 0.2);
-      }
-      .trust-banner.noncompliant {
-        background: var(--danger-bg);
-        border-color: rgba(239, 68, 68, 0.2);
-      }
-
-      .trust-icon {
-        width: 44px;
-        height: 44px;
-        border-radius: 10px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 22px;
-        flex-shrink: 0;
-      }
-      .safe .trust-icon {
-        background: rgba(34, 197, 94, 0.15);
-      }
-      .review .trust-icon {
-        background: rgba(245, 158, 11, 0.15);
-      }
-      .noncompliant .trust-icon {
-        background: rgba(239, 68, 68, 0.15);
-      }
-
-      .trust-label {
-        font-size: 11px;
-        font-weight: 700;
-        letter-spacing: 0.08em;
-        text-transform: uppercase;
-        margin-bottom: 2px;
-      }
-      .safe .trust-label {
-        color: var(--safe);
-      }
-      .review .trust-label {
-        color: var(--review);
-      }
-      .noncompliant .trust-label {
-        color: var(--danger);
-      }
-
-      .trust-verdict {
-        font-size: 16px;
-        font-weight: 700;
-        color: var(--text);
-      }
-      .trust-reason {
-        font-size: 13px;
-        color: var(--text-muted);
-        margin-top: 2px;
-      }
-
-      /* ── Grid layout ── */
-      .results-grid {
-        display: grid;
-        grid-template-columns: 1fr 340px;
-        gap: 20px;
-        align-items: start;
-      }
-
-      @media (max-width: 900px) {
-        .results-grid {
-          grid-template-columns: 1fr;
-        }
-      }
-
-      /* ── Answer card ── */
-      .card {
-        background: var(--surface);
-        border: 1px solid var(--border);
-        border-radius: 14px;
-        padding: 24px;
-      }
-
-      .card h3 {
-        font-size: 12px;
-        font-weight: 700;
-        letter-spacing: 0.08em;
-        text-transform: uppercase;
-        color: var(--text-muted);
-        margin-bottom: 16px;
-      }
-
-      .answer-text {
-        font-size: 14px;
-        line-height: 1.8;
-        color: var(--text);
-      }
-
-      /* Citation highlights */
-      .citation {
-        background: rgba(47, 111, 237, 0.1);
-        border: 1px solid rgba(47, 111, 237, 0.25);
-        border-radius: 4px;
-        padding: 1px 6px;
-        font-family: var(--mono);
-        font-size: 11px;
-        color: var(--accent);
-        font-weight: 500;
-        white-space: nowrap;
-      }
-
-      /* Claims list */
-      .claim-item {
-        padding: 12px 0;
-        border-bottom: 1px solid var(--border);
-      }
-      .claim-item:last-child {
-        border-bottom: none;
-      }
-
-      .claim-sentence {
-        font-size: 13px;
-        color: var(--text);
-        line-height: 1.6;
-        margin-bottom: 6px;
-      }
-      .claim-meta {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        flex-wrap: wrap;
-      }
-
-      .gate-pill {
-        display: inline-block;
-        border-radius: 100px;
-        padding: 2px 10px;
-        font-size: 11px;
-        font-weight: 700;
-        letter-spacing: 0.04em;
-      }
-      .gate-pill.safe {
-        background: var(--safe-bg);
-        color: var(--safe);
-      }
-      .gate-pill.review {
-        background: var(--review-bg);
-        color: var(--review);
-      }
-      .gate-pill.noncompliant {
-        background: var(--danger-bg);
-        color: var(--danger);
-      }
-
-      /* ── Scorecard ── */
-      .scorecard {
-        display: flex;
-        flex-direction: column;
-        gap: 12px;
-      }
-
-      .score-row {
-        display: flex;
-        flex-direction: column;
-        gap: 4px;
-      }
-
-      .score-label-row {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-      }
-
-      .score-name {
-        font-size: 12px;
-        color: var(--text-muted);
-        font-weight: 600;
-      }
-
-      .score-val {
-        font-family: var(--mono);
-        font-size: 12px;
-        font-weight: 500;
-        color: var(--text);
-      }
-
-      .score-bar-track {
-        height: 4px;
-        background: var(--surface2);
-        border-radius: 2px;
-        overflow: hidden;
-      }
-
-      .score-bar-fill {
-        height: 100%;
-        border-radius: 2px;
-        transition: width 1s ease;
-      }
-
-      .composite-score {
-        text-align: center;
-        padding: 20px;
-        background: var(--surface2);
-        border-radius: 10px;
-        margin-bottom: 16px;
-      }
-
-      .composite-num {
-        font-family: var(--mono);
-        font-size: 36px;
-        font-weight: 500;
-        color: var(--text);
-        line-height: 1;
-      }
-
-      .composite-label {
-        font-size: 11px;
-        color: var(--text-muted);
-        font-weight: 600;
-        text-transform: uppercase;
-        letter-spacing: 0.06em;
-        margin-top: 4px;
-      }
-
-      /* ── Sources ── */
-      .source-item {
-        display: flex;
-        align-items: flex-start;
-        gap: 10px;
-        padding: 10px 0;
-        border-bottom: 1px solid var(--border);
-      }
-      .source-item:last-child {
-        border-bottom: none;
-      }
-
-      .source-pub {
-        background: var(--accent-glow);
-        border: 1px solid rgba(47, 111, 237, 0.25);
-        border-radius: 6px;
-        padding: 3px 8px;
-        font-family: var(--mono);
-        font-size: 11px;
-        color: var(--accent);
-        font-weight: 500;
-        flex-shrink: 0;
-      }
-
-      .source-pub.conflict {
-        background: var(--review-bg);
-        border-color: rgba(245, 158, 11, 0.2);
-        color: var(--review);
-      }
-
-      .source-detail {
-        font-size: 12px;
-        color: var(--text-muted);
-      }
-      .source-section {
-        font-weight: 700;
-        color: var(--text);
-        font-size: 12px;
-      }
-
-      /* ── Loading state ── */
-      .loading {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        padding: 60px;
-        gap: 16px;
-      }
-
-      .spinner {
         width: 36px;
         height: 36px;
-        border: 2px solid var(--border);
-        border-top-color: var(--accent);
-        border-radius: 50%;
-        animation: spin 0.8s linear infinite;
-      }
-      @keyframes spin {
-        to {
-          transform: rotate(360deg);
-        }
-      }
-
-      .loading-text {
-        font-size: 13px;
-        color: var(--text-muted);
-      }
-      .loading-steps {
-        display: flex;
-        flex-direction: column;
-        gap: 6px;
-        margin-top: 8px;
-      }
-      .loading-step {
-        font-size: 12px;
-        color: var(--text-dim);
+        background: linear-gradient(135deg, #059669, #10b981);
+        border-radius: 10px;
         display: flex;
         align-items: center;
-        gap: 8px;
-        font-family: var(--mono);
-      }
-      .loading-step.done {
-        color: var(--safe);
-      }
-      .loading-step.active {
-        color: var(--accent);
-      }
-      .loading-step::before {
-        content: "○";
-        font-size: 10px;
-      }
-      .loading-step.done::before {
-        content: "✓";
-      }
-      .loading-step.active::before {
-        content: "►";
+        justify-content: center;
+        font-weight: 800;
+        color: white;
+        font-size: 16px;
+        box-shadow: 0 4px 14px var(--accent-glow);
       }
 
-      .loading-step.active {
-        animation: loadingPulse 1.1s ease-in-out infinite;
+      .logo-text h1 {
+        font-size: 17px;
+        font-weight: 700;
+        letter-spacing: -0.02em;
+        color: #064e3b;
       }
 
-      @keyframes loadingPulse {
-        0%,
-        100% {
-          opacity: 0.78;
-          transform: translateX(0);
-        }
-        50% {
-          opacity: 1;
-          transform: translateX(2px);
-        }
-      }
-
-      /* ── Conflict alert ── */
-      .conflict-alert {
-        background: var(--review-bg);
-        border: 1px solid rgba(245, 158, 11, 0.2);
-        border-radius: 10px;
-        padding: 14px 16px;
-        margin-bottom: 16px;
-        font-size: 13px;
-        color: var(--review);
-      }
-      .conflict-alert strong {
-        display: block;
-        margin-bottom: 4px;
+      .logo-text p {
         font-size: 11px;
+        color: #059669;
         text-transform: uppercase;
-        letter-spacing: 0.06em;
+        letter-spacing: 0.08em;
+        font-weight: 600;
       }
 
-      /* ── Stats bar ── */
-      .stats-bar {
-        display: grid;
-        grid-template-columns: repeat(4, 1fr);
+      .header-meta {
+        display: flex;
+        align-items: center;
         gap: 12px;
-        margin-bottom: 24px;
       }
 
-      .stat-card {
-        background: var(--surface);
-        border: 1px solid var(--border);
-        border-radius: 12px;
-        padding: 16px;
-        text-align: center;
-      }
-
-      .stat-num {
-        font-family: var(--mono);
-        font-size: 24px;
-        font-weight: 500;
-        color: var(--text);
-        line-height: 1;
-        margin-bottom: 4px;
-      }
-
-      .stat-label {
-        font-size: 11px;
-        color: var(--text-muted);
-        font-weight: 600;
-        text-transform: uppercase;
-        letter-spacing: 0.04em;
-      }
-
-      /* ── Ingestion panel ── */
-      .ingest-panel {
-        background: var(--surface);
-        border: 1px solid var(--border);
-        border-radius: 16px;
-        padding: 24px;
-        margin-bottom: 24px;
-      }
-
-      .drop-zone {
-        border: 2px dashed var(--border);
-        border-radius: 12px;
-        padding: 40px;
-        text-align: center;
-        cursor: pointer;
-        transition: all 0.2s;
-        color: var(--text-muted);
-        font-size: 14px;
-      }
-      .drop-zone:hover,
-      .drop-zone.drag-over {
-        border-color: var(--accent);
-        background: var(--accent-glow);
-        color: var(--text);
-      }
-      .drop-zone p {
-        margin-top: 8px;
+      .tech-day-badge {
+        background: #ecfdf5;
+        border: 1px solid #a7f3d0;
+        color: #047857;
+        padding: 5px 14px;
+        border-radius: 20px;
         font-size: 12px;
-        color: var(--text-dim);
-      }
-
-      #file-input {
-        display: none;
-      }
-
-      .ingested-list {
-        margin-top: 16px;
-        display: flex;
-        flex-direction: column;
-        gap: 8px;
-      }
-      .ingested-item {
+        font-weight: 700;
         display: flex;
         align-items: center;
-        gap: 10px;
-        background: var(--surface2);
-        border-radius: 8px;
-        padding: 10px 14px;
-        font-size: 13px;
-      }
-      .ingested-pub {
-        font-family: var(--mono);
-        font-size: 11px;
-        color: var(--accent);
-        font-weight: 500;
-        background: var(--accent-glow);
-        border-radius: 4px;
-        padding: 2px 8px;
-      }
-      .ingested-name {
-        color: var(--text-muted);
-        flex: 1;
-      }
-      .ingested-chunks {
-        font-family: var(--mono);
-        font-size: 11px;
-        color: var(--text-dim);
+        gap: 8px;
+        box-shadow: 0 2px 6px rgba(16, 185, 129, 0.08);
       }
 
-      /* ── Tabs ── */
-      .tabs {
-        display: flex;
-        gap: 2px;
-        margin: 0 auto 20px;
-        background: var(--surface2);
-        border-radius: 10px;
-        padding: 3px;
-        border: 1px solid var(--border);
-        width: fit-content;
-        overflow: visible;
+      .pulse-dot {
+        width: 7px;
+        height: 7px;
+        background: #059669;
+        border-radius: 50%;
+        box-shadow: 0 0 8px #10b981;
+        animation: pulse 2s infinite;
       }
-      .tab {
-        padding: 6px 16px;
-        border-radius: 8px;
-        font-size: 13px;
-        font-weight: 600;
-        cursor: pointer;
+
+      @keyframes pulse {
+        0%, 100% { opacity: 1; transform: scale(1); }
+        50% { opacity: 0.4; transform: scale(1.2); }
+      }
+
+      main {
+        max-width: 1280px;
+        margin: 0 auto;
+        padding: 2.2rem 2rem;
+      }
+
+      .hero-section {
+        text-align: center;
+        margin-bottom: 2.5rem;
+      }
+
+      .hero-section h2 {
+        font-family: var(--display);
+        font-size: 2.5rem;
+        font-weight: 400;
+        margin-bottom: 0.6rem;
+        background: linear-gradient(135deg, #064e3b 0%, #059669 60%, #047857 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        letter-spacing: -0.01em;
+      }
+
+      .hero-section p {
         color: var(--text-muted);
+        max-width: 680px;
+        margin: 0 auto 1.6rem auto;
+        font-size: 15px;
+      }
+
+      .nav-tabs {
+        display: flex;
+        justify-content: center;
+        gap: 8px;
+        background: #ffffff;
+        padding: 6px;
+        border-radius: 14px;
+        border: 1px solid var(--border);
+        max-width: 660px;
+        margin: 0 auto;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
+      }
+
+      .tab-btn {
+        flex: 1;
+        padding: 11px 18px;
         border: none;
-        background: none;
+        background: transparent;
+        color: var(--text-muted);
         font-family: var(--sans);
-        position: relative;
-        transform-origin: center center;
-        will-change: transform;
-        transition:
-          transform 0.12s ease,
-          box-shadow 0.12s ease,
-          color 0.12s ease;
+        font-weight: 700;
+        font-size: 13px;
+        border-radius: 10px;
+        cursor: pointer;
+        transition: all 0.2s ease;
       }
-      .tab.active {
-        background: var(--surface);
-        color: var(--text);
-        box-shadow: 0 4px 14px rgba(47, 111, 237, 0.18);
+
+      .tab-btn:hover {
+        color: var(--accent);
+        background: #f0fdf4;
       }
-      .tab:hover:not(.active) {
-        color: var(--text);
+
+      .tab-btn.active {
+        background: linear-gradient(135deg, #059669, #10b981);
+        color: white;
+        box-shadow: 0 4px 14px var(--accent-glow);
       }
 
       .tab-content {
         display: none;
+        animation: fadeIn 0.3s ease;
       }
+
       .tab-content.active {
         display: block;
       }
 
-      /* ── Scroll Reveal ── */
-      .scroll-reveal {
-        will-change: transform, opacity, filter;
-        transform-origin: 0% 50%;
+      @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(6px); }
+        to { opacity: 1; transform: translateY(0); }
       }
 
-      .scroll-reveal-word {
+      /* Panel Cards */
+      .card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 18px;
+        padding: 2rem;
+        margin-bottom: 1.8rem;
+        box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.04), 0 4px 12px rgba(16, 185, 129, 0.03);
+      }
+
+      .card-title {
+        font-size: 16px;
+        font-weight: 800;
+        color: #064e3b;
+        margin-bottom: 1.2rem;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+
+      .form-group {
+        margin-bottom: 1.3rem;
+      }
+
+      .form-group label {
+        display: block;
+        font-size: 12px;
+        font-weight: 700;
+        color: #047857;
+        margin-bottom: 6px;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+      }
+
+      .form-control {
+        width: 100%;
+        background: #ffffff;
+        border: 1.5px solid var(--border);
+        border-radius: 10px;
+        padding: 12px 16px;
+        color: var(--text);
+        font-family: var(--sans);
+        font-size: 14px;
+        transition: all 0.2s ease;
+      }
+
+      .form-control:focus {
+        outline: none;
+        border-color: var(--accent);
+        box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2);
+        background: #ffffff;
+      }
+
+      textarea.form-control {
+        min-height: 95px;
+        resize: vertical;
+      }
+
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        padding: 12px 26px;
+        border-radius: 10px;
+        font-family: var(--sans);
+        font-weight: 700;
+        font-size: 14px;
+        cursor: pointer;
+        border: none;
+        transition: all 0.2s ease;
+      }
+
+      .btn-primary {
+        background: linear-gradient(135deg, #059669, #10b981);
+        color: white;
+        box-shadow: 0 4px 14px var(--accent-glow);
+      }
+
+      .btn-primary:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 6px 20px var(--accent-glow);
+        background: linear-gradient(135deg, #047857, #059669);
+      }
+
+      .btn-secondary {
+        background: #ecfdf5;
+        color: #047857;
+        border: 1.5px solid #a7f3d0;
+        font-weight: 700;
+      }
+
+      .btn-secondary:hover {
+        background: #d1fae5;
+        color: #065f46;
+        border-color: #6ee7b7;
+      }
+
+      /* Benchmark Suite Cards */
+      .sample-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 1.2rem;
+        margin-top: 1rem;
+      }
+
+      .sample-card {
+        background: #ffffff;
+        border: 1.5px solid var(--border);
+        border-radius: 14px;
+        padding: 1.3rem;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        position: relative;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
+      }
+
+      .sample-card:hover {
+        border-color: var(--accent);
+        transform: translateY(-2px);
+        box-shadow: 0 8px 24px rgba(16, 185, 129, 0.12);
+      }
+
+      .sample-tag {
+        display: inline-block;
+        padding: 3px 9px;
+        border-radius: 6px;
+        font-size: 11px;
+        font-weight: 800;
+        margin-bottom: 8px;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+      }
+
+      .sample-tag.certain { background: var(--certain-bg); color: var(--certain); border: 1px solid var(--certain-border); }
+      .sample-tag.uncertain { background: var(--uncertain-bg); color: var(--uncertain); border: 1px solid var(--uncertain-border); }
+      .sample-tag.verify { background: var(--verify-bg); color: var(--verify); border: 1px solid var(--verify-border); }
+
+      .sample-q {
+        font-size: 14px;
+        font-weight: 700;
+        margin-bottom: 6px;
+        color: var(--text);
+      }
+
+      .sample-desc {
+        font-size: 12px;
+        color: var(--text-muted);
+        line-height: 1.5;
+      }
+
+      /* Results Output Section */
+      .tag-display-banner {
+        padding: 1.5rem 1.8rem;
+        border-radius: 14px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 1.5rem;
+      }
+
+      .tag-display-banner.certain {
+        background: #ecfdf5;
+        border: 1.5px solid #a7f3d0;
+        color: #047857;
+      }
+
+      .tag-display-banner.uncertain {
+        background: #fffbeb;
+        border: 1.5px solid #fde68a;
+        color: #b45309;
+      }
+
+      .tag-display-banner.verify {
+        background: #fef2f2;
+        border: 1.5px solid #fecaca;
+        color: #b91c1c;
+      }
+
+      .tag-title {
+        font-size: 22px;
+        font-weight: 800;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        letter-spacing: -0.02em;
+      }
+
+      .tag-icon {
+        font-size: 26px;
+      }
+
+      .metrics-grid-4 {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 1.1rem;
+        margin-bottom: 1.5rem;
+      }
+
+      @media (max-width: 768px) {
+        .metrics-grid-4 {
+          grid-template-columns: repeat(2, 1fr);
+        }
+      }
+
+      .metric-box {
+        background: #ffffff;
+        border: 1.5px solid var(--border);
+        border-radius: 12px;
+        padding: 1.2rem 1rem;
+        text-align: center;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
+      }
+
+      .metric-value {
+        font-family: var(--mono);
+        font-size: 24px;
+        font-weight: 800;
+        color: var(--text);
+      }
+
+      .metric-label {
+        font-size: 11px;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        font-weight: 700;
+        margin-top: 5px;
+      }
+
+      .reason-box {
+        background: #ecfdf5;
+        border-left: 4px solid var(--accent);
+        border-radius: 8px;
+        padding: 1.1rem 1.3rem;
+        margin-bottom: 1.5rem;
+      }
+
+      .reason-box h4 {
+        font-size: 12px;
+        font-weight: 800;
+        color: #047857;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        margin-bottom: 4px;
+      }
+
+      .warning-box {
+        background: #fef2f2;
+        border-left: 4px solid #ef4444;
+        border-radius: 8px;
+        padding: 1.1rem 1.3rem;
+        margin-bottom: 1.5rem;
+      }
+
+      .warning-box h4 {
+        font-size: 12px;
+        font-weight: 800;
+        color: #dc2626;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        margin-bottom: 4px;
+      }
+
+      .claims-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 1rem;
+        font-size: 13px;
+        background: #ffffff;
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        overflow: hidden;
+      }
+
+      .claims-table th {
+        text-align: left;
+        padding: 12px;
+        background: #f0fdf4;
+        color: #064e3b;
+        font-weight: 700;
+        border-bottom: 2px solid #a7f3d0;
+      }
+
+      .claims-table td {
+        padding: 12px;
+        border-bottom: 1px solid var(--border);
+        vertical-align: top;
+        color: var(--text);
+      }
+
+      .claims-table tr:last-child td {
+        border-bottom: none;
+      }
+
+      .label-badge {
+        display: inline-block;
+        padding: 3px 8px;
+        border-radius: 5px;
+        font-family: var(--mono);
+        font-size: 11px;
+        font-weight: 700;
+      }
+
+      .label-badge.entailed { background: var(--certain-bg); color: var(--certain); border: 1px solid var(--certain-border); }
+      .label-badge.neutral { background: var(--uncertain-bg); color: var(--uncertain); border: 1px solid var(--uncertain-border); }
+      .label-badge.contradiction { background: var(--verify-bg); color: var(--verify); border: 1px solid var(--verify-border); }
+
+      /* Generated Output Styles */
+      .generated-output-card {
+        background: linear-gradient(135deg, #f0fdf4 0%, #ffffff 100%);
+        border: 1.5px solid #a7f3d0;
+        border-radius: 14px;
+        padding: 1.4rem 1.6rem;
+        margin-bottom: 1.5rem;
+        box-shadow: 0 4px 20px rgba(16, 185, 129, 0.06);
+      }
+
+      .generated-output-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 0.8rem;
+      }
+
+      .generated-output-header h4 {
+        font-size: 13px;
+        font-weight: 800;
+        color: #047857;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .generated-output-body {
+        color: #0f172a;
+        font-size: 15px;
+        line-height: 1.7;
+        white-space: pre-wrap;
+      }
+
+      .citation-tag {
+        background: #d1fae5;
+        color: #065f46;
+        border: 1px solid #6ee7b7;
+        border-radius: 5px;
+        padding: 2px 7px;
+        font-family: var(--mono);
+        font-size: 11px;
+        font-weight: 700;
+        margin: 0 3px;
         display: inline-block;
       }
+
+      .copy-btn {
+        background: #ffffff;
+        border: 1.5px solid #a7f3d0;
+        color: #047857;
+        border-radius: 8px;
+        padding: 5px 12px;
+        font-size: 12px;
+        font-weight: 700;
+        cursor: pointer;
+        transition: all 0.2s ease;
+      }
+
+      .copy-btn:hover {
+        background: #ecfdf5;
+        border-color: #059669;
+      }
+
+      .source-chunks-list {
+        margin-top: 1.5rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.8rem;
+      }
+
+      .source-chunk-card {
+        background: #f8fafc;
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 1.1rem;
+        font-size: 13px;
+      }
+
+      .source-chunk-meta {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 6px;
+        font-family: var(--mono);
+        font-size: 11px;
+        color: var(--text-muted);
+      }
+
+      .source-badge {
+        background: #ecfdf5;
+        color: #047857;
+        border: 1px solid #a7f3d0;
+        padding: 2px 8px;
+        border-radius: 4px;
+        font-weight: 700;
+      }
+
+      .audit-footer {
+        margin-top: 1.5rem;
+        padding-top: 1rem;
+        border-top: 1px solid var(--border);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        font-size: 13px;
+        color: var(--text-muted);
+      }
+
+      .spinner {
+        display: inline-block;
+        width: 16px;
+        height: 16px;
+        border: 2px solid rgba(255,255,255,0.3);
+        border-top-color: white;
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+      }
+
+      @keyframes spin {
+        to { transform: rotate(360deg); }
+      }
     </style>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/ScrollTrigger.min.js"></script>
   </head>
   <body>
     <header>
       <div class="logo">
-        <div class="logo-mark">XAI</div>
-        <div class="logo-text">PS1‑<span>XAI</span></div>
+        <div class="logo-mark">P6</div>
+        <div class="logo-text">
+          <h1>CognifyAI · Confidence Labeler</h1>
+          <p>TCS Tech Day @ D J Sanghvi College of Engineering</p>
+        </div>
       </div>
-      <nav>
-        <a href="#ingest">Ingest</a>
-        <!-- <a href="#query">Query</a>
-        <a href="#brd">BRD Validate</a>
-        <a href="#audit">Audit</a>-->
-      </nav>
+      <div class="header-meta">
+        <div class="tech-day-badge">
+          <div class="pulse-dot"></div>
+          Theme: Responsible Enterprise AI
+        </div>
+      </div>
     </header>
 
-    <div class="hero">
-      <div class="hero-grid"></div>
-      <div class="hero-tag">
-        <div class="dot"></div>
-        Cognify Demo · PS1-XAI
-      </div>
-      <h1>
-        Compliance-grade
-        <span class="gradient-text" style="font-style: italic">governance</span
-        ><br />for regulatory AI
-      </h1>
-      <p class="hero-sub">
-        Every generated claim attributed, NLI-verified, and trust-gated against
-        RBI's half-yearly publication suite. Not a RAG chatbot — a governance
-        layer.
-      </p>
-      <div class="hero-badges">
-        <span class="badge pub">FSR</span>
-        <span class="badge pub">MPR</span>
-        <span class="badge pub">PSR</span>
-        <span class="badge pub">FER</span>
-        <span class="badge">NLI Entailment</span>
-        <span class="badge">Edition Conflict Detection</span>
-        <span class="badge">RAGAS Scorecard</span>
-        <span class="badge">BRD Validation</span>
-      </div>
-    </div>
-
     <main>
-      <!-- Stats -->
-      <div class="stats-bar" id="corpus-stats">
-        <div class="stat-card">
-          <div class="stat-num" id="stat-chunks">0</div>
-          <div class="stat-label">Chunks Indexed</div>
+      <section class="hero-section">
+        <h2>AI Hallucination Confidence Labeler</h2>
+        <p>
+          Detect uncertainty, calculate Perplexity metrics, and classify Q&A reliability into
+          <strong>Certain</strong>, <strong>Uncertain</strong>, or <strong>Needs Verification</strong>.
+        </p>
+
+        <div class="nav-tabs">
+          <button class="tab-btn active" onclick="switchTab('tab-checker', this)">⚡ Q&A Reliability Checker</button>
+          <button class="tab-btn" onclick="switchTab('tab-samples', this)">🧪 Hackathon Benchmark Suite</button>
+          <button class="tab-btn" onclick="switchTab('tab-rag', this)">📁 RAG Knowledge Base Mode</button>
         </div>
-        <div class="stat-card">
-          <div class="stat-num" id="stat-pubs">0</div>
-          <div class="stat-label">Publications</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-num" id="stat-editions">0</div>
-          <div class="stat-label">Editions</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-num" id="stat-conflicts">0</div>
-          <div class="stat-label">Edition Conflicts</div>
-        </div>
-      </div>
+      </section>
 
-      <!-- Tabs -->
-      <div class="tabs">
-        <button class="tab active" onclick="switchTab('ingest')">
-          ① Ingest
-        </button>
-        <button class="tab" onclick="switchTab('query')">② Query</button>
-        <button class="tab" onclick="switchTab('brd')">③ BRD Validate</button>
-        <button class="tab" onclick="switchTab('audit')">④ Audit Report</button>
-      </div>
-
-      <!-- ── Tab: Ingest ── -->
-      <div class="tab-content active" id="tab-ingest">
-        <div class="section-label scroll-reveal">Document ingestion</div>
-        <div class="ingest-panel" id="ingest">
-          <div
-            class="drop-zone"
-            id="drop-zone"
-            onclick="document.getElementById('file-input').click()"
-          >
-            <div style="font-size: 32px; margin-bottom: 8px">📄</div>
-            <strong>Drop RBI publication here or click to upload</strong>
-            <p>
-              Supported: PDF, DOCX, TXT — FSR, MPR, PSR, or FER publications
-              only
-            </p>
-          </div>
-          <input
-            type="file"
-            id="file-input"
-            accept=".pdf,.docx,.txt"
-            multiple
-          />
-
-          <div class="ingested-list" id="ingested-list"></div>
-
-          <div
-            style="
-              margin-top: 16px;
-              padding: 14px;
-              background: var(--surface2);
-              border-radius: 10px;
-              font-size: 13px;
-              color: var(--text-muted);
-            "
-          >
-            <strong
-              style="
-                color: var(--text-dim);
-                font-size: 11px;
-                text-transform: uppercase;
-                letter-spacing: 0.06em;
-                display: block;
-                margin-bottom: 8px;
-              "
-              >⚡ Live backend</strong
-            >
-            Uploaded files are sent to
-            <code style="font-family: var(--mono); color: var(--accent)"
-              >/ingest</code
-            >
-            and processed by the Python ingestion pipeline. <br /><br />
-            Click <strong>"Sync corpus stats"</strong> below to refresh corpus
-            counters from the server. <br /><br />
-            <button
-              class="btn"
-              onclick="loadDemoCorpus()"
-              style="margin-top: 4px; font-size: 13px; padding: 10px 20px"
-            >
-              Sync corpus stats
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <!-- ── Tab: Query ── -->
-      <div class="tab-content" id="tab-query">
-        <div class="section-label scroll-reveal" id="query">Query pipeline</div>
-        <div class="query-panel">
-          <div class="query-row">
-            <textarea
-              id="query-input"
-              placeholder="Ask a compliance question grounded in RBI publications…
-e.g. What are the systemic risk indicators highlighted in the latest FSR?"
-            ></textarea>
-            <button class="btn" id="query-btn" onclick="runQuery()">
-              Analyse →
-            </button>
+      <!-- TAB 1: Q&A Checker -->
+      <section id="tab-checker" class="tab-content active">
+        <div class="card">
+          <div class="card-title">
+            <span>Input Question & Source Text</span>
+            <button class="btn btn-secondary" style="padding: 4px 10px; font-size: 12px;" onclick="loadQuickDemo()">Load Python Example</button>
           </div>
 
-          <div class="filter-row">
-            <span
-              style="
-                font-size: 12px;
-                color: var(--text-muted);
-                align-self: center;
-                font-weight: 600;
-              "
-              >Filter:</span
-            >
-            <button
-              class="filter-chip active"
-              onclick="toggleFilter(this, 'all')"
-            >
-              All publications
-            </button>
-            <button class="filter-chip" onclick="toggleFilter(this, 'FSR')">
-              FSR
-            </button>
-            <button class="filter-chip" onclick="toggleFilter(this, 'MPR')">
-              MPR
-            </button>
-            <button class="filter-chip" onclick="toggleFilter(this, 'PSR')">
-              PSR
-            </button>
-            <button class="filter-chip" onclick="toggleFilter(this, 'FER')">
-              FER
-            </button>
+          <div class="form-group">
+            <label>Question</label>
+            <input type="text" id="input-question" class="form-control" placeholder="e.g. Who invented Python?" />
           </div>
 
-          <div class="sample-queries">
-            <button class="sample-btn" onclick="loadSample(this)">
-              What are the key systemic risk indicators in the latest FSR?
-            </button>
-            <button class="sample-btn" onclick="loadSample(this)">
-              How has the RBI's monetary policy stance evolved between the last
-              two MPR editions?
-            </button>
-            <button class="sample-btn" onclick="loadSample(this)">
-              What are the payment settlement obligations under the current PSR?
-            </button>
-            <button class="sample-btn" onclick="loadSample(this)">
-              What is the current foreign exchange reserve adequacy position per
-              the FER?
-            </button>
-          </div>
-        </div>
-
-        <!-- Loading -->
-        <div id="loading-panel" style="display: none">
-          <div class="loading">
-            <div class="spinner"></div>
-            <div class="loading-text">Running XAI governance pipeline…</div>
-            <div class="loading-steps">
-              <div class="loading-step" id="step-1">
-                Hybrid retrieval (dense + BM25)
-              </div>
-              <div class="loading-step" id="step-2">
-                Cross-encoder reranking
-              </div>
-              <div class="loading-step" id="step-3">
-                LLM generation with attribution
-              </div>
-              <div class="loading-step" id="step-4">
-                NLI entailment verification
-              </div>
-              <div class="loading-step" id="step-5">
-                Paraphrase stability check
-              </div>
-              <div class="loading-step" id="step-6">
-                Trust gate + RAGAS scorecard
-              </div>
-              <div class="loading-step" id="step-7">
-                Audit report generation
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Results -->
-        <div id="results">
-          <!-- Trust banner -->
-          <div id="trust-banner" class="trust-banner">
-            <div class="trust-icon" id="trust-icon"></div>
-            <div>
-              <div class="trust-label" id="trust-label"></div>
-              <div class="trust-verdict" id="trust-verdict"></div>
-              <div class="trust-reason" id="trust-reason"></div>
-            </div>
+          <div class="form-group">
+            <label>AI-Generated Answer (Optional - auto-generates if blank)</label>
+            <textarea id="input-answer" class="form-control" placeholder="e.g. Guido van Rossum invented Python."></textarea>
           </div>
 
-          <!-- Edition conflict alert -->
-          <div id="conflict-alert" class="conflict-alert" style="display: none">
-            <strong>⚠ Edition conflict detected</strong>
-            <span id="conflict-detail"></span>
+          <div class="form-group">
+            <label>Source Passage / Grounding Text</label>
+            <textarea id="input-source" class="form-control" style="min-height: 110px;" placeholder="e.g. Python is a programming language created by Guido van Rossum and released in 1991."></textarea>
           </div>
 
-          <!-- Results grid -->
-          <div class="results-grid">
-            <div>
-              <!-- Answer -->
-              <div class="card" style="margin-bottom: 16px">
-                <h3>Generated answer</h3>
-                <div class="answer-text" id="answer-text"></div>
-              </div>
-
-              <!-- Claims -->
-              <div class="card">
-                <h3>Claim-level verification</h3>
-                <div id="claims-list"></div>
-              </div>
-            </div>
-
-            <div>
-              <!-- RAGAS Scorecard -->
-              <div class="card" style="margin-bottom: 16px">
-                <h3>RAGAS trust scorecard</h3>
-                <div class="scorecard">
-                  <div class="composite-score">
-                    <div class="composite-num" id="sc-composite">—</div>
-                    <div class="composite-label">Composite trust score</div>
-                  </div>
-                  <div id="scorecard-rows"></div>
-                </div>
-              </div>
-
-              <!-- Sources -->
-              <div class="card">
-                <h3>Sources retrieved</h3>
-                <div id="sources-list"></div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- ── Tab: BRD ── -->
-      <div class="tab-content" id="tab-brd">
-        <div class="section-label scroll-reveal" id="brd">
-          BRD compliance validation
-        </div>
-        <div class="ingest-panel">
-          <div
-            class="drop-zone"
-            onclick="document.getElementById('brd-input').click()"
-          >
-            <div style="font-size: 32px; margin-bottom: 8px">📋</div>
-            <strong>Upload Business Requirement Document</strong>
-            <p>
-              PDF or DOCX — requirements will be extracted and mapped to RBI
-              sections
-            </p>
-          </div>
-          <input
-            type="file"
-            id="brd-input"
-            accept=".pdf,.docx,.txt"
-            style="display: none"
-          />
-          <div id="brd-result" style="margin-top: 20px; display: none"></div>
-          <button
-            class="btn"
-            style="margin-top: 16px; font-size: 13px; padding: 10px 20px"
-            onclick="runDemoBRD()"
-          >
-            Load demo BRD analysis
+          <button id="btn-check" class="btn btn-primary" onclick="runReliabilityCheck()">
+            <span>⚡ Verify Reliability & Label</span>
           </button>
         </div>
-      </div>
 
-      <!-- ── Tab: Audit ── -->
-      <div class="tab-content" id="tab-audit">
-        <div class="section-label scroll-reveal" id="audit">
-          Audit-ready report
+        <div id="checker-output" style="display: none;">
+          <!-- Results rendered dynamically -->
         </div>
+      </section>
+
+      <!-- TAB 2: Hackathon Benchmark Suite -->
+      <section id="tab-samples" class="tab-content">
         <div class="card">
-          <div
-            id="audit-empty"
-            style="text-align: center; padding: 40px; color: var(--text-muted)"
-          >
-            Run a query first to generate an audit report.
+          <div class="card-title">
+            <span>Pre-Loaded Hackathon Test Scenarios</span>
+            <span style="font-size: 12px; color: var(--text-muted);">1-Click Demo Scenarios</span>
           </div>
-          <div id="audit-content" style="display: none"></div>
+
+          <p style="color: var(--text-muted); font-size: 14px; margin-bottom: 1rem;">
+            Test the Confidence Labeler with supported, partially supported, unsupported, and policy Q&A examples.
+          </p>
+
+          <div id="sample-cards-container" class="sample-grid">
+            <!-- Rendered dynamically -->
+          </div>
         </div>
-      </div>
+      </section>
+
+      <!-- TAB 3: RAG Knowledge Base Mode -->
+      <section id="tab-rag" class="tab-content">
+        <div class="card">
+          <div class="card-title">
+            <span>Ingest Document & Query Knowledge Base</span>
+            <span style="font-size: 12px; color: var(--text-muted);">Supports Any PDF, DOCX, or TXT Document</span>
+          </div>
+
+          <p style="color: var(--text-muted); font-size: 14px; margin-bottom: 1.2rem;">
+            Upload any reference PDF (reports, manuals, research papers, compliance guidelines, policy briefs, or agreements) to index it into the vector database and query it with automatic hallucination detection and confidence scoring.
+          </p>
+
+          <div style="display: flex; gap: 1rem; margin-bottom: 1.5rem; flex-wrap: wrap;">
+            <input type="file" id="file-upload" class="form-control" style="max-width: 400px;" accept=".pdf,.docx,.txt" />
+            <button id="btn-ingest" class="btn btn-secondary" onclick="uploadDocument()">📁 Ingest Reference Document</button>
+          </div>
+
+          <div class="form-group">
+            <label>Query Ingested Documents</label>
+            <input type="text" id="rag-query" class="form-control" placeholder="Ask any question over your ingested documents..." />
+          </div>
+
+          <button id="btn-rag-query" class="btn btn-primary" onclick="runRagQuery()">
+            <span>🔍 Search & Label Reliability</span>
+          </button>
+        </div>
+
+        <div id="rag-output" style="display: none;"></div>
+      </section>
     </main>
 
     <script>
-      // ─── State ───────────────────────────────────────────────────────────────────
-      let activeFilter = "all";
-      let lastReport = null;
-      const ingestedDocs = [];
-      const API_BASE =
-        window.location.protocol === "file:" ? "http://127.0.0.1:8000" : "";
+      function switchTab(tabId, btnEl = null) {
+        document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+        document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
 
-      function sleep(ms) {
-        return new Promise((resolve) => setTimeout(resolve, ms));
-      }
-
-      async function apiRequest(path, options = {}) {
-        const response = await fetch(`${API_BASE}${path}`, options);
-        const contentType = response.headers.get("content-type") || "";
-        const payload = contentType.includes("application/json")
-          ? await response.json()
-          : await response.text();
-
-        if (!response.ok) {
-          const detail =
-            payload && typeof payload === "object" ? payload.detail : payload;
-          throw new Error(detail || `Request failed (${response.status})`);
-        }
-
-        return payload;
-      }
-
-      function parseCitation(citation) {
-        const text = (citation || "").replace(/^\[/, "").replace(/\]$/, "");
-        const parts = text.split("·").map((p) => p.trim());
-        return {
-          pub_name: parts[0] || "",
-          edition: parts[1] || "",
-          section_id: (parts[2] || "").replace(/^§/, ""),
-        };
-      }
-
-      // ─── Tab switching ────────────────────────────────────────────────────────────
-      function switchTab(name) {
-        document.querySelectorAll(".tab").forEach((t, i) => {
-          const tabs = ["ingest", "query", "brd", "audit"];
-          t.classList.toggle("active", tabs[i] === name);
-        });
-        document.querySelectorAll(".tab-content").forEach((tc) => {
-          tc.classList.toggle("active", tc.id === "tab-" + name);
-        });
-      }
-
-      // ─── Filter chips ─────────────────────────────────────────────────────────────
-      function toggleFilter(el, val) {
-        document
-          .querySelectorAll(".filter-chip")
-          .forEach((c) => c.classList.remove("active"));
-        el.classList.add("active");
-        activeFilter = val;
-      }
-
-      function loadSample(el) {
-        const normalizedQuery = (el.textContent || "")
-          .replace(/\s+/g, " ")
-          .trim();
-        document.getElementById("query-input").value = normalizedQuery;
-        switchTab("query");
-      }
-
-      // ─── Corpus sync ──────────────────────────────────────────────────────────────
-      async function loadDemoCorpus() {
-        await syncCorpusStats(true);
-      }
-
-      function addIngestedItem(d) {
-        ingestedDocs.push(d);
-        const list = document.getElementById("ingested-list");
-        const el = document.createElement("div");
-        el.className = "ingested-item";
-        const conflictMark = d.pub === "FSR" ? " ⚠ Conflict detected" : "";
-        el.innerHTML = `
-    <span class="ingested-pub">${d.pub}</span>
-    <span class="ingested-name">${d.file}${conflictMark ? '<span style="color:var(--review);font-size:11px;"> ' + conflictMark + "</span>" : ""}</span>
-    <span class="ingested-chunks">${d.chunks} chunks</span>
-    <span style="color:var(--safe);font-size:12px;">✓</span>
-  `;
-        list.appendChild(el);
-      }
-
-      function updateStats() {
-        const totalChunks = ingestedDocs.reduce((s, d) => s + d.chunks, 0);
-        const pubs = new Set(ingestedDocs.map((d) => d.pub)).size;
-        const editions = new Set(ingestedDocs.map((d) => d.edition)).size;
-        const conflicts =
-          ingestedDocs.filter((d) => d.pub === "FSR").length > 1 ? 2 : 0;
-        document.getElementById("stat-chunks").textContent = totalChunks;
-        document.getElementById("stat-pubs").textContent = pubs;
-        document.getElementById("stat-editions").textContent = editions;
-        document.getElementById("stat-conflicts").textContent = conflicts;
-      }
-
-      async function syncCorpusStats(refreshList = false) {
-        try {
-          const stats = await apiRequest("/corpus/stats");
-          const conflicts = await apiRequest("/editions/conflicts");
-
-          document.getElementById("stat-chunks").textContent =
-            stats.total_chunks ?? 0;
-          document.getElementById("stat-pubs").textContent = Object.keys(
-            stats.publications || {},
-          ).length;
-
-          const editionCount = Object.values(stats.publications || {}).reduce(
-            (sum, p) => {
-              return sum + (p.editions ? p.editions.length : 0);
-            },
-            0,
-          );
-          document.getElementById("stat-editions").textContent = editionCount;
-          document.getElementById("stat-conflicts").textContent =
-            conflicts.total_conflicts ?? 0;
-
-          if (refreshList) {
-            const list = document.getElementById("ingested-list");
-            list.innerHTML = "";
-            ingestedDocs.length = 0;
-
-            Object.entries(stats.publications || {}).forEach(([pub, data]) => {
-              const editions = (data.editions || []).join(", ") || "Unknown";
-              addIngestedItem({
-                pub,
-                edition: editions,
-                file: `${pub} corpus`,
-                chunks: data.chunk_count || 0,
-              });
-            });
-          }
-        } catch (err) {
-          alert(`Unable to sync corpus stats: ${err.message}`);
-        }
-      }
-
-      async function uploadIngestFile(file) {
-        const formData = new FormData();
-        formData.append("file", file);
-        return apiRequest("/ingest", {
-          method: "POST",
-          body: formData,
-        });
-      }
-
-      // ─── File drop zone ───────────────────────────────────────────────────────────
-      const dropZone = document.getElementById("drop-zone");
-      const fileInput = document.getElementById("file-input");
-
-      dropZone.addEventListener("dragover", (e) => {
-        e.preventDefault();
-        dropZone.classList.add("drag-over");
-      });
-      dropZone.addEventListener("dragleave", () =>
-        dropZone.classList.remove("drag-over"),
-      );
-      dropZone.addEventListener("drop", (e) => {
-        e.preventDefault();
-        dropZone.classList.remove("drag-over");
-        handleFiles(e.dataTransfer.files);
-      });
-      fileInput.addEventListener("change", () => handleFiles(fileInput.files));
-
-      async function handleFiles(files) {
-        const selectedFiles = Array.from(files);
-        for (const f of selectedFiles) {
-          try {
-            const result = await uploadIngestFile(f);
-            addIngestedItem({
-              pub: result.pub_name || detectPub(f.name) || "Unknown",
-              edition: result.edition || "Unknown",
-              file: f.name,
-              chunks: result.chunks_ingested || 0,
-            });
-          } catch (err) {
-            alert(`Ingestion failed for ${f.name}: ${err.message}`);
-          }
-        }
-
-        updateStats();
-        await syncCorpusStats(false);
-      }
-
-      function detectPub(name) {
-        const u = name.toUpperCase();
-        if (u.includes("FSR") || u.includes("FINANCIAL_STABILITY"))
-          return "FSR";
-        if (u.includes("MPR") || u.includes("MONETARY")) return "MPR";
-        if (u.includes("PSR") || u.includes("PAYMENT")) return "PSR";
-        if (u.includes("FER") || u.includes("FOREIGN")) return "FER";
-        return null;
-      }
-
-      // ─── Query pipeline ───────────────────────────────────────────────────────────
-      async function runQuery() {
-        const query = document.getElementById("query-input").value.trim();
-        if (!query) return;
-
-        switchTab("query");
-        document.getElementById("results").style.display = "none";
-        document.getElementById("loading-panel").style.display = "block";
-        document.getElementById("query-btn").disabled = true;
-
-        // Scroll to loading panel immediately
-        setTimeout(() => {
-          const loadingPanel = document.getElementById("loading-panel");
-          if (loadingPanel) {
-            loadingPanel.scrollIntoView({ behavior: "smooth", block: "start" });
-          }
-        }, 0);
-
-        const steps = [
-          "step-1",
-          "step-2",
-          "step-3",
-          "step-4",
-          "step-5",
-          "step-6",
-          "step-7",
-        ];
-
-        let progressTimer = null;
-        let currentStepIndex = 0;
-
-        const resetSteps = () => {
-          steps.forEach((id) => {
-            document.getElementById(id).className = "loading-step";
+        if (btnEl) {
+          btnEl.classList.add('active');
+        } else {
+          const matchingBtn = Array.from(document.querySelectorAll('.tab-btn')).find(b => {
+            const attr = b.getAttribute('onclick');
+            return attr && attr.includes(tabId);
           });
-        };
+          if (matchingBtn) matchingBtn.classList.add('active');
+        }
+        const targetContent = document.getElementById(tabId);
+        if (targetContent) targetContent.classList.add('active');
+      }
 
-        const startProgress = () => {
-          resetSteps();
-          document.getElementById(steps[0]).className = "loading-step active";
-          currentStepIndex = 0;
-          progressTimer = setInterval(() => {
-            if (currentStepIndex < steps.length - 1) {
-              document.getElementById(steps[currentStepIndex]).className =
-                "loading-step done";
-              currentStepIndex += 1;
-              document.getElementById(steps[currentStepIndex]).className =
-                "loading-step active";
-            }
-          }, 650);
-        };
+      function loadQuickDemo() {
+        document.getElementById('input-question').value = "Who invented Python?";
+        document.getElementById('input-answer').value = "Guido van Rossum invented Python.";
+        document.getElementById('input-source').value = "Python is a high-level programming language created by Guido van Rossum and first released in 1991.";
+      }
 
-        const stopProgress = () => {
-          if (progressTimer) {
-            clearInterval(progressTimer);
-            progressTimer = null;
-          }
-          steps.forEach((id) => {
-            document.getElementById(id).className = "loading-step done";
-          });
-        };
+      function formatCitations(text) {
+        if (!text) return "";
+        // Replace citations like [FSR · June 2024 · §3.2] or [PUB · EDITION · §SEC] with styled badges
+        return text.replace(/\[([A-Za-z0-9\s]+)\s*·\s*([^·\]]+)\s*·\s*§?([^\]]+)\]/g, (match, pub, ed, sec) => {
+          return `<span class="citation-tag">📄 ${pub.trim()} · ${ed.trim()} · §${sec.trim()}</span>`;
+        });
+      }
 
-        startProgress();
+      function copyToClipboard(text, btnElement) {
+        if (!navigator.clipboard) {
+          const textarea = document.createElement('textarea');
+          textarea.value = text;
+          document.body.appendChild(textarea);
+          textarea.select();
+          document.execCommand('copy');
+          document.body.removeChild(textarea);
+        } else {
+          navigator.clipboard.writeText(text);
+        }
+        if (btnElement) {
+          const orig = btnElement.innerHTML;
+          btnElement.innerHTML = "✓ Copied!";
+          setTimeout(() => { btnElement.innerHTML = orig; }, 2000);
+        }
+      }
+
+      async function runReliabilityCheck() {
+        const question = document.getElementById('input-question').value.trim();
+        const answer = document.getElementById('input-answer').value.trim();
+        const source_text = document.getElementById('input-source').value.trim();
+
+        if (!question) {
+          alert("Please enter a question.");
+          return;
+        }
+
+        const btn = document.getElementById('btn-check');
+        btn.disabled = true;
+        btn.innerHTML = `<span class="spinner"></span> Evaluating...`;
 
         try {
-          await sleep(200);
-
-          const filters =
-            activeFilter === "all" ? null : { pub_name: activeFilter };
-          const queryResult = await apiRequest("/query", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ query, filters }),
+          const res = await fetch('/check', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ question, answer, source_text })
           });
 
-          const report = await apiRequest(queryResult.report_url);
-          lastReport = report;
-          stopProgress();
+          if (!res.ok) {
+            const errData = await res.json().catch(() => ({}));
+            throw new Error(errData.detail || `Server error ${res.status}`);
+          }
+          const data = await res.json();
+          renderResults('checker-output', data, false);
+        } catch (e) {
+          alert("Error running check: " + e.message);
+        } finally {
+          btn.disabled = false;
+          btn.innerHTML = `<span>⚡ Verify Reliability & Label</span>`;
+        }
+      }
 
-          const claims = (report.claim_evidence || []).map((c) => {
-            const parsed = parseCitation(c.citation);
-            return {
-              sentence: c.sentence || "",
-              pub_name: parsed.pub_name,
-              edition: parsed.edition,
-              section_id: parsed.section_id,
-              nli_result: c.nli_result,
-              paraphrase_stability: c.paraphrase_stability,
-              final_trust_gate: c.trust_gate || "Needs Human Review",
-              reasoning: c.reasoning || "",
+      async function fetchSampleScenarios() {
+        try {
+          const res = await fetch('/samples');
+          if (!res.ok) return;
+          const data = await res.json();
+          const container = document.getElementById('sample-cards-container');
+          container.innerHTML = '';
+
+          (data.samples || []).forEach(sample => {
+            const card = document.createElement('div');
+            card.className = 'sample-card';
+            const tagClass = sample.expected_label === 'Certain' ? 'certain' :
+                             sample.expected_label === 'Uncertain' ? 'uncertain' : 'verify';
+
+            card.innerHTML = `
+              <span class="sample-tag ${tagClass}">${sample.expected_label}</span>
+              <div class="sample-q">${sample.question}</div>
+              <div class="sample-desc">${sample.notes}</div>
+            `;
+
+            card.onclick = () => {
+              document.getElementById('input-question').value = sample.question;
+              document.getElementById('input-answer').value = sample.answer;
+              document.getElementById('input-source').value = sample.source_text;
+              switchTab('tab-checker');
+              runReliabilityCheck();
             };
+
+            container.appendChild(card);
+          });
+        } catch (e) {
+          console.error("Failed to load sample scenarios", e);
+        }
+      }
+
+      function renderResults(containerId, data, isRag = false) {
+        const container = document.getElementById(containerId);
+        container.style.display = 'block';
+
+        const tag = data.reliability_tag || "Needs Verification";
+        const tagClass = tag === "Certain" ? "certain" :
+                         tag === "Uncertain" ? "uncertain" : "verify";
+        const icon = tag === "Certain" ? "✅" : tag === "Uncertain" ? "⚠️" : "🚨";
+
+        // Determine trust score value
+        let trustScore = 0.50;
+        if (data.trust_score !== undefined && data.trust_score !== null) {
+          trustScore = data.trust_score;
+        } else if (data.ragas_scorecard && data.ragas_scorecard.composite_trust_score !== undefined) {
+          trustScore = data.ragas_scorecard.composite_trust_score;
+        } else if (data.metrics && data.metrics.composite_trust_score !== undefined) {
+          trustScore = data.metrics.composite_trust_score;
+        } else if (data.uncertainty_score !== undefined) {
+          trustScore = Math.max(0, Math.min(1, (100 - data.uncertainty_score) / 100));
+        }
+
+        const trustScorePct = (trustScore * 100).toFixed(0);
+        const trustScoreColor = trustScore >= 0.75 ? "#10b981" : trustScore >= 0.45 ? "#f59e0b" : "#ef4444";
+
+        let warningsHtml = '';
+        if (data.warnings && data.warnings.length > 0) {
+          warningsHtml = `
+            <div class="warning-box">
+              <h4>⚠️ Reliability Warning & Risk Signals</h4>
+              <ul style="margin-left: 1.2rem; color: #fca5a5;">
+                ${data.warnings.map(w => `<li>${w}</li>`).join('')}
+              </ul>
+            </div>
+          `;
+        }
+
+        let claimsRows = '';
+        (data.claim_breakdown || []).forEach(c => {
+          const badgeClass = c.nli_label === 'entailed' ? 'entailed' :
+                             c.nli_label === 'contradiction' ? 'contradiction' : 'neutral';
+          claimsRows += `
+            <tr>
+              <td style="font-weight: 500;">${c.sentence}</td>
+              <td><span class="label-badge ${badgeClass}">${(c.nli_label || 'NEUTRAL').toUpperCase()}</span></td>
+              <td style="font-family: var(--mono);">${((c.entailment_score || 0) * 100).toFixed(0)}%</td>
+              <td style="color: var(--text-muted);">${c.citation ? `<span class="citation-tag">${c.citation}</span> ` : ''}${c.reasoning || '-'}</td>
+            </tr>
+          `;
+        });
+
+        // Answer / Generated Output Section
+        const answerText = data.answer || "No generated output available.";
+        const formattedAnswer = formatCitations(answerText);
+        const generatedOutputSection = `
+          <div class="generated-output-card">
+            <div class="generated-output-header">
+              <h4>🤖 Generated Output / AI Answer</h4>
+              <button class="copy-btn" onclick="copyToClipboard(${JSON.stringify(answerText)}, this)">📋 Copy Answer</button>
+            </div>
+            <div class="generated-output-body">${formattedAnswer}</div>
+          </div>
+        `;
+
+        // Retrieved Sources Chunks Section (if available in RAG mode)
+        let retrievedSourcesHtml = '';
+        if (data.retrieved_chunks && data.retrieved_chunks.length > 0) {
+          retrievedSourcesHtml = `
+            <div style="margin-top: 1.8rem;">
+              <h4 style="font-size: 14px; font-weight: 700; margin-bottom: 0.8rem; color: var(--text);">
+                📚 Grounding Sources Retrieved (${data.retrieved_chunks.length} Chunks)
+              </h4>
+              <div class="source-chunks-list">
+                ${data.retrieved_chunks.slice(0, 4).map((c, i) => `
+                  <div class="source-chunk-card">
+                    <div class="source-chunk-meta">
+                      <span><strong style="color: var(--text);">${c.pub_name || 'DOC'}</strong> · ${c.edition || 'Edition'} · §${c.section_id || (i + 1)}</span>
+                      <span class="source-badge">${c.rerank_score ? `Score: ${(c.rerank_score * 100).toFixed(0)}%` : `Chunk #${i + 1}`}</span>
+                    </div>
+                    <div style="color: var(--text-muted); line-height: 1.5;">${c.text_preview || c.text?.substring(0, 240) || ''}...</div>
+                  </div>
+                `).join('')}
+              </div>
+            </div>
+          `;
+        }
+
+        // Audit report footer
+        let auditFooterHtml = '';
+        if (data.report_url || data.session_id) {
+          const reportLink = data.report_url || `/report/${data.session_id}`;
+          auditFooterHtml = `
+            <div class="audit-footer">
+              <span>Session Audit ID: <code style="font-family: var(--mono); color: #059669; font-weight: 700;">${data.session_id || 'N/A'}</code></span>
+              <a href="${reportLink}" target="_blank" style="color: #059669; text-decoration: none; font-weight: 700; display: inline-flex; align-items: center; gap: 4px;">
+                📥 View Full Compliance Audit Report (JSON) →
+              </a>
+            </div>
+          `;
+        }
+
+        const faithfulnessScore = data.metrics && data.metrics.faithfulness !== undefined ?
+                                  (data.metrics.faithfulness * 100).toFixed(0) :
+                                  data.ragas_scorecard && data.ragas_scorecard.faithfulness !== undefined ?
+                                  (data.ragas_scorecard.faithfulness * 100).toFixed(0) : '0';
+
+        container.innerHTML = `
+          <div class="card" style="border-color: var(--border-bright);">
+            <div class="tag-display-banner ${tagClass}">
+              <div class="tag-title">
+                <span class="tag-icon">${icon}</span>
+                <span>RELIABILITY TAG: ${tag.toUpperCase()}</span>
+              </div>
+              <div style="font-size: 13px; font-weight: 600; text-transform: uppercase;">
+                ${tag === "Certain" ? "High Grounding Match" : tag === "Uncertain" ? "Partial Evidence Support" : "Missing / Contradictory Evidence"}
+              </div>
+            </div>
+
+            <!-- 4-Metric Grid with Prominent Trust Score -->
+            <div class="metrics-grid-4">
+              <div class="metric-box" style="border-color: ${trustScoreColor}; box-shadow: 0 0 10px ${trustScoreColor}22;">
+                <div class="metric-value" style="color: ${trustScoreColor};">
+                  ${trustScorePct}%
+                </div>
+                <div class="metric-label">Composite Trust Score</div>
+              </div>
+
+              <div class="metric-box">
+                <div class="metric-value" style="color: ${tag === 'Certain' ? '#10b981' : tag === 'Uncertain' ? '#f59e0b' : '#ef4444'};">
+                  ${data.perplexity ? data.perplexity.toFixed(2) : '7.50'}
+                </div>
+                <div class="metric-label">Perplexity Metric</div>
+              </div>
+
+              <div class="metric-box">
+                <div class="metric-value">${data.uncertainty_score !== undefined ? data.uncertainty_score.toFixed(1) : '50.0'}%</div>
+                <div class="metric-label">Uncertainty Level</div>
+              </div>
+
+              <div class="metric-box">
+                <div class="metric-value">${faithfulnessScore}%</div>
+                <div class="metric-label">Faithfulness Rate</div>
+              </div>
+            </div>
+
+            <!-- Generated Output Section -->
+            ${generatedOutputSection}
+
+            <div class="reason-box">
+              <h4>Short Reason & Uncertainty Explanation</h4>
+              <p style="color: var(--text); font-size: 14px;">${data.short_reason || 'No explanation available.'}</p>
+            </div>
+
+            ${warningsHtml}
+
+            <div style="margin-top: 1.5rem;">
+              <h4 style="font-size: 14px; font-weight: 700; margin-bottom: 0.5rem;">Claim-by-Claim Verification Matrix</h4>
+              <table class="claims-table">
+                <thead>
+                  <tr>
+                    <th>Claim Sentence</th>
+                    <th>NLI Label</th>
+                    <th>Entailment Score</th>
+                    <th>Citation & Explanation</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${claimsRows || '<tr><td colspan="4">No claim breakdown available.</td></tr>'}
+                </tbody>
+              </table>
+            </div>
+
+            ${retrievedSourcesHtml}
+
+            ${auditFooterHtml}
+          </div>
+        `;
+
+        // Smooth scroll into view
+        container.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }
+
+      async function uploadDocument() {
+        const fileInput = document.getElementById('file-upload');
+        if (!fileInput.files.length) {
+          alert("Please select a file to ingest.");
+          return;
+        }
+
+        const btn = document.getElementById('btn-ingest');
+        btn.disabled = true;
+        btn.innerHTML = `<span class="spinner"></span> Ingesting...`;
+
+        const formData = new FormData();
+        formData.append('file', fileInput.files[0]);
+
+        try {
+          const res = await fetch('/ingest', { method: 'POST', body: formData });
+          if (!res.ok) {
+            const errData = await res.json().catch(() => ({}));
+            throw new Error(errData.detail || `Ingestion failed (${res.status})`);
+          }
+          const data = await res.json();
+          alert(`✅ Document "${fileInput.files[0].name}" ingested successfully!\n${data.total_chunks || 0} chunks extracted and indexed.`);
+          fileInput.value = '';
+        } catch (e) {
+          alert("Ingestion error: " + e.message);
+        } finally {
+          btn.disabled = false;
+          btn.innerHTML = `📁 Ingest Reference Document`;
+        }
+      }
+
+      async function runRagQuery() {
+        const query = document.getElementById('rag-query').value.trim();
+        if (!query) {
+          alert("Please enter a query.");
+          return;
+        }
+
+        const btn = document.getElementById('btn-rag-query');
+        btn.disabled = true;
+        btn.innerHTML = `<span class="spinner"></span> Searching & Analyzing...`;
+
+        try {
+          const res = await fetch('/query', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ query })
           });
 
-          const conflicts = (report.edition_conflicts || []).map((c) => ({
-            pub_name: c.pub_name,
-            section_id: c.section_id,
-            editions: c.editions || [],
-            note: c.conflict_note || "",
-          }));
+          if (!res.ok) {
+            const errData = await res.json().catch(() => ({}));
+            throw new Error(errData.detail || `Query error (${res.status})`);
+          }
 
-          const uiResult = {
-            session_id: queryResult.session_id,
-            answer: queryResult.answer,
-            trust_gate: queryResult.trust_gate,
-            ragas_scorecard: queryResult.ragas_scorecard || {},
-            claims,
-            sources: report.sources || [],
-            conflicts,
-            report,
+          const data = await res.json();
+
+          // Prepare formatted response for rendering
+          const formatted = {
+            session_id: data.session_id,
+            question: query,
+            answer: data.answer,
+            reliability_tag: data.reliability_tag,
+            trust_score: data.trust_score !== undefined ? data.trust_score : (data.ragas_scorecard ? data.ragas_scorecard.composite_trust_score : 0.5),
+            perplexity: data.perplexity,
+            uncertainty_score: data.uncertainty_score,
+            short_reason: data.short_reason,
+            warnings: data.warnings || [],
+            metrics: {
+              faithfulness: data.ragas_scorecard ? (data.ragas_scorecard.faithfulness || 0) : 0,
+              composite_trust_score: data.trust_score || (data.ragas_scorecard ? data.ragas_scorecard.composite_trust_score : 0.5),
+            },
+            claim_breakdown: (data.claim_breakdown && data.claim_breakdown.length > 0) ? data.claim_breakdown : [
+              {
+                sentence: data.answer,
+                nli_label: data.reliability_tag === 'Certain' ? 'entailed' : data.reliability_tag === 'Uncertain' ? 'neutral' : 'contradiction',
+                entailment_score: data.ragas_scorecard ? (data.ragas_scorecard.faithfulness || 0.5) : 0.5,
+                reasoning: `Composite Trust Score: ${data.trust_score || 0.5}`
+              }
+            ],
+            retrieved_chunks: data.retrieved_chunks || [],
+            report_url: data.report_url,
           };
 
-          renderResults(uiResult);
-          populateAuditTab(report);
-
-          document.getElementById("loading-panel").style.display = "none";
-          document.getElementById("results").style.display = "block";
-
-          // Scroll to results as they appear
-          setTimeout(() => {
-            const resultsEl = document.getElementById("results");
-            if (resultsEl) {
-              resultsEl.scrollIntoView({ behavior: "smooth", block: "start" });
-            }
-          }, 100);
-        } catch (err) {
-          if (progressTimer) {
-            clearInterval(progressTimer);
-            progressTimer = null;
-          }
-          document.getElementById("loading-panel").style.display = "none";
-          document.getElementById("results").style.display = "none";
-          alert(`Query failed: ${err.message}`);
-        } finally {
-          document.getElementById("query-btn").disabled = false;
-        }
-      }
-
-      // ─── Demo result generation ───────────────────────────────────────────────────
-      function generateDemoResult(query) {
-        const hasConflict =
-          query.toLowerCase().includes("fsr") ||
-          query.toLowerCase().includes("systemic");
-
-        const claims = [
-          {
-            sentence:
-              "The gross non-performing asset ratio of scheduled commercial banks declined to 3.2% in September 2023, reflecting improved credit quality.",
-            pub_name: "FSR",
-            edition: "December 2023",
-            section_id: "3.1",
-            nli_result: {
-              label: "entailed",
-              entailment_score: 0.91,
-              contradiction_score: 0.04,
-            },
-            paraphrase_stability: { stability_score: 0.85, stable: true },
-            final_trust_gate: "Safe",
-            reasoning:
-              "NLI label: entailed (entailment=0.91) | Stability: 85% | Source: [FSR · Dec 2023 · §3.1]",
-          },
-          {
-            sentence:
-              "Capital adequacy ratios across the banking sector remain well above the regulatory minimum at 16.8%.",
-            pub_name: "FSR",
-            edition: "December 2023",
-            section_id: "3.2",
-            nli_result: {
-              label: "entailed",
-              entailment_score: 0.87,
-              contradiction_score: 0.06,
-            },
-            paraphrase_stability: { stability_score: 0.8, stable: true },
-            final_trust_gate: "Safe",
-            reasoning:
-              "NLI label: entailed (entailment=0.87) | Stability: 80% | Source: [FSR · Dec 2023 · §3.2]",
-          },
-          {
-            sentence:
-              "Macro-stress tests indicate that banks can absorb severe adverse shocks without breaching regulatory capital floors.",
-            pub_name: "FSR",
-            edition: "June 2023",
-            section_id: "4.1",
-            nli_result: {
-              label: "neutral",
-              entailment_score: 0.48,
-              contradiction_score: 0.12,
-            },
-            paraphrase_stability: { stability_score: 0.55, stable: true },
-            final_trust_gate: "Needs Human Review",
-            reasoning:
-              "NLI label: neutral (entailment=0.48) | Stability: 55% | Source: [FSR · Jun 2023 · §4.1]",
-          },
-        ];
-
-        const scorecard = {
-          context_relevance: 0.88,
-          faithfulness: 0.78,
-          citation_precision: 0.83,
-          edition_conflict_risk: hasConflict ? 0.33 : 0.05,
-          paraphrase_stability: 0.73,
-          composite_trust_score: 0.79,
-        };
-
-        const overallGate =
-          scorecard.faithfulness >= 0.75 &&
-          scorecard.edition_conflict_risk < 0.4
-            ? "Safe"
-            : "Needs Human Review";
-
-        const sources = [
-          {
-            pub_name: "FSR",
-            edition: "December 2023",
-            section_id: "3.1",
-            section_title: "Banking Stability Indicators",
-            rerank_score: 0.94,
-            edition_conflict_flag: hasConflict,
-          },
-          {
-            pub_name: "FSR",
-            edition: "December 2023",
-            section_id: "3.2",
-            section_title: "Capital Adequacy",
-            rerank_score: 0.89,
-            edition_conflict_flag: false,
-          },
-          {
-            pub_name: "FSR",
-            edition: "June 2023",
-            section_id: "4.1",
-            section_title: "Stress Test Results",
-            rerank_score: 0.76,
-            edition_conflict_flag: hasConflict,
-          },
-          {
-            pub_name: "MPR",
-            edition: "October 2023",
-            section_id: "2.3",
-            section_title: "Credit Growth Outlook",
-            rerank_score: 0.61,
-            edition_conflict_flag: false,
-          },
-        ];
-
-        const answer = `The latest Financial Stability Report (December 2023) highlights significant improvements in banking system health. ${claims[0].sentence} [FSR · December 2023 · §3.1] ${claims[1].sentence} [FSR · December 2023 · §3.2]
-
-Regarding systemic risk assessment, the June 2023 edition provided forward-looking stress scenarios. ${claims[2].sentence} [FSR · June 2023 · §4.1]
-
-The Monetary Policy Report (October 2023) notes that credit growth remains robust, though the RBI has maintained a calibrated stance to balance growth and inflation objectives.`;
-
-        const conflicts = hasConflict
-          ? [
-              {
-                pub_name: "FSR",
-                section_id: "3.1",
-                editions: ["June 2023", "December 2023"],
-                note: "GNPA ratio figures differ between editions — December 2023 supersedes June 2023",
-              },
-            ]
-          : [];
-
-        return {
-          session_id: Math.random().toString(36).slice(2, 10),
-          answer,
-          trust_gate: overallGate,
-          ragas_scorecard: scorecard,
-          claims,
-          sources,
-          conflicts,
-          report: {
-            report_id:
-              "XAI-" + Math.random().toString(36).slice(2, 10).toUpperCase(),
-            generated_at: new Date().toISOString(),
-            query,
-            overall_trust_gate: overallGate,
-            ragas_scorecard: scorecard,
-            sources,
-            claim_evidence: claims,
-            edition_conflicts: conflicts,
-          },
-        };
-      }
-
-      // ─── Render results ───────────────────────────────────────────────────────────
-      function renderResults(result) {
-        const isReviewGate =
-          result.trust_gate === "Needs Human Review" ||
-          result.trust_gate === "Needs Review";
-
-        // Trust banner
-        const gateClass =
-          result.trust_gate === "Safe"
-            ? "safe"
-            : isReviewGate
-              ? "review"
-              : "noncompliant";
-        const gateIcon =
-          result.trust_gate === "Safe" ? "✅" : isReviewGate ? "⚠️" : "❌";
-        const banner = document.getElementById("trust-banner");
-        banner.className = "trust-banner " + gateClass;
-        document.getElementById("trust-icon").textContent = gateIcon;
-        document.getElementById("trust-label").textContent =
-          "Trust gate decision";
-        document.getElementById("trust-verdict").textContent =
-          result.trust_gate;
-        document.getElementById("trust-reason").textContent =
-          result.trust_gate === "Safe"
-            ? "All NLI thresholds met. Output is certifiable for regulatory use."
-            : isReviewGate
-              ? "One or more claims require manual verification before regulatory submission."
-              : "Critical hallucination or contradiction detected. Output must not be used.";
-
-        // Conflict alert
-        if (result.conflicts && result.conflicts.length > 0) {
-          const alertEl = document.getElementById("conflict-alert");
-          alertEl.style.display = "block";
-          document.getElementById("conflict-detail").textContent =
-            result.conflicts
-              .map(
-                (c) =>
-                  `${c.pub_name} §${c.section_id}: ${c.note || c.editions.join(" vs ")} — December 2023 supersedes.`,
-              )
-              .join(" | ");
-        } else {
-          document.getElementById("conflict-alert").style.display = "none";
-        }
-
-        // Answer
-        document.getElementById("answer-text").innerHTML = formatAnswer(
-          result.answer,
-          result.sources || [],
-        );
-
-        // Claims
-        const claimsList = document.getElementById("claims-list");
-        claimsList.innerHTML = "";
-        result.claims.forEach((c) => {
-          const isClaimReviewGate =
-            c.final_trust_gate === "Needs Human Review" ||
-            c.final_trust_gate === "Needs Review";
-          const gClass =
-            c.final_trust_gate === "Safe"
-              ? "safe"
-              : isClaimReviewGate
-                ? "review"
-                : "noncompliant";
-          claimsList.innerHTML += `
-      <div class="claim-item">
-        <div class="claim-sentence">${c.sentence}</div>
-        <div class="claim-meta">
-          <span class="gate-pill ${gClass}">${c.final_trust_gate}</span>
-          ${buildCitationLink(c.pub_name, c.edition, c.section_id, result.sources || [])}
-          <span style="font-size:11px; color:var(--text-dim); font-family:var(--mono);">
-            E=${(c.nli_result?.entailment_score || 0).toFixed(2)}
-          </span>
-        </div>
-      </div>
-    `;
-        });
-
-        // RAGAS scorecard
-        const sc = result.ragas_scorecard;
-        document.getElementById("sc-composite").textContent =
-          Math.round(sc.composite_trust_score * 100) + "%";
-
-        const scoreFields = [
-          { key: "faithfulness", label: "Faithfulness", color: "#22c55e" },
-          {
-            key: "citation_precision",
-            label: "Citation precision",
-            color: "#4f9cf9",
-          },
-          {
-            key: "context_relevance",
-            label: "Context relevance",
-            color: "#a78bfa",
-          },
-          {
-            key: "paraphrase_stability",
-            label: "Paraphrase stability",
-            color: "#f59e0b",
-          },
-          {
-            key: "edition_conflict_risk",
-            label: "Edition conflict risk",
-            color: "#ef4444",
-            invert: true,
-          },
-        ];
-
-        const isNonCompliant = result.trust_gate === "Non-Compliant";
-        const compositeVal = sc.composite_trust_score ?? 0;
-        const shouldDampenBars = isNonCompliant && compositeVal < 0.4;
-        const barScale = shouldDampenBars ? Math.max(0.15, compositeVal) : 1;
-
-        document.getElementById("scorecard-rows").innerHTML = scoreFields
-          .map((f) => {
-            const val = sc[f.key] ?? 0;
-            const pct = Math.round(val * 100);
-            let barPct = f.invert ? pct : pct;
-            let barColor = f.color;
-
-            // For risk metrics (lower is better), fill should represent actual risk.
-            // 0% risk -> empty bar, not full red.
-            if (f.invert) {
-              if (pct <= 10) barColor = "#22c55e";
-              else if (pct <= 30) barColor = "#f59e0b";
-              else barColor = "#ef4444";
-            }
-
-            const effectiveBarPct = Math.max(
-              0,
-              Math.min(100, Math.round(barPct * barScale)),
-            );
-            return `
-      <div class="score-row">
-        <div class="score-label-row">
-          <span class="score-name">${f.label}${f.invert ? " (lower=better)" : ""}</span>
-          <span class="score-val">${pct}%</span>
-        </div>
-        <div class="score-bar-track">
-          <div class="score-bar-fill" style="width:${effectiveBarPct}%; background:${barColor};"></div>
-        </div>
-      </div>
-    `;
-          })
-          .join("");
-
-        // Sources
-        document.getElementById("sources-list").innerHTML = result.sources
-          .map((s) => {
-            const anchorId = sourceAnchorId(
-              s.pub_name,
-              s.edition,
-              s.section_id,
-            );
-            const docLink = s.source_url
-              ? `<a class="citation" href="${s.source_url}#search=${encodeURIComponent(String(s.section_id || ""))}" target="_blank" rel="noopener noreferrer" style="margin-left:8px; text-decoration:none;">open doc</a>`
-              : "";
-            return `
-    <div id="${anchorId}" class="source-item">
-      <span class="source-pub ${s.edition_conflict_flag ? "conflict" : ""}">${s.pub_name}</span>
-      <div>
-        <div class="source-section">§${s.section_id} · ${s.section_title}</div>
-        <div class="source-detail">${s.edition} · score ${s.rerank_score?.toFixed(2) ?? "—"}${s.edition_conflict_flag ? " · ⚠ conflict" : ""}${docLink}</div>
-      </div>
-    </div>
-  `;
-          })
-          .join("");
-      }
-
-      function sourceAnchorId(pub, edition, sectionId) {
-        const key =
-          `${pub || ""}|${edition || ""}|${sectionId || ""}`.toLowerCase();
-        return (
-          "source-" + key.replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "")
-        );
-      }
-
-      function buildCitationLink(pub, edition, sectionId, sources) {
-        const anchorId = sourceAnchorId(pub, edition, sectionId);
-        const matchedSource = (sources || []).find(
-          (s) =>
-            String(s.pub_name || "").toLowerCase() ===
-              String(pub || "").toLowerCase() &&
-            String(s.edition || "").toLowerCase() ===
-              String(edition || "").toLowerCase() &&
-            String(s.section_id || "").toLowerCase() ===
-              String(sectionId || "").toLowerCase(),
-        );
-
-        if (matchedSource) {
-          return `<a class="citation" href="#${anchorId}" style="text-decoration:none;">${pub} · ${edition} · §${sectionId}</a>`;
-        }
-
-        return `<span class="citation">${pub} · ${edition} · §${sectionId}</span>`;
-      }
-
-      function formatAnswer(text, sources = []) {
-        return text
-          .replace(
-            /\[([^\[\]·]+)\s*·\s*([^\[\]·]+)\s*·\s*§([^\]]+)\]/g,
-            (_m, pub, edition, sectionId) => {
-              const cleanPub = String(pub || "").trim();
-              const cleanEdition = String(edition || "").trim();
-              const cleanSection = String(sectionId || "")
-                .trim()
-                .replace(/^[^0-9A-Za-z]+/, "");
-              const anchorId = sourceAnchorId(
-                cleanPub,
-                cleanEdition,
-                cleanSection,
-              );
-              const hasSource = (sources || []).some(
-                (s) =>
-                  String(s.pub_name || "").toLowerCase() ===
-                    cleanPub.toLowerCase() &&
-                  String(s.edition || "").toLowerCase() ===
-                    cleanEdition.toLowerCase() &&
-                  String(s.section_id || "").toLowerCase() ===
-                    cleanSection.toLowerCase(),
-              );
-
-              if (hasSource) {
-                return `<a class="citation" href="#${anchorId}" style="text-decoration:none;">[${cleanPub} · ${cleanEdition} · §${cleanSection}]</a>`;
-              }
-              return `<span class="citation">[${cleanPub} · ${cleanEdition} · §${cleanSection}]</span>`;
-            },
-          )
-          .replace(/\n\n/g, '</p><p style="margin-top:12px;">')
-          .replace(/^/, "<p>")
-          .replace(/$/, "</p>");
-      }
-
-      // ─── Audit tab ────────────────────────────────────────────────────────────────
-      function populateAuditTab(report) {
-        document.getElementById("audit-empty").style.display = "none";
-        const content = document.getElementById("audit-content");
-        content.style.display = "block";
-
-        content.innerHTML = `
-    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:20px; flex-wrap:wrap; gap:12px;">
-      <div>
-        <div style="font-family:var(--mono); font-size:11px; color:var(--text-muted); margin-bottom:4px;">REPORT ID</div>
-        <div style="font-family:var(--mono); font-size:14px; color:var(--accent);">${report.report_id}</div>
-      </div>
-      <div>
-        <div style="font-size:11px; color:var(--text-muted); margin-bottom:4px;">Generated</div>
-        <div style="font-size:13px; color:var(--text);">${new Date(report.generated_at).toLocaleString()}</div>
-      </div>
-      <div>
-        <div style="font-size:11px; color:var(--text-muted); margin-bottom:4px;">Overall gate</div>
-        <div class="gate-pill ${report.overall_trust_gate === "Safe" ? "safe" : "review"}" style="font-size:13px; padding:4px 14px;">${report.overall_trust_gate}</div>
-      </div>
-      <button class="btn btn-ghost" style="font-size:13px; padding:8px 16px;" onclick="downloadReport()">↓ Download JSON</button>
-    </div>
-
-    <div style="margin-bottom:20px;">
-      <div style="font-size:11px; color:var(--text-muted); margin-bottom:8px; font-weight:700; text-transform:uppercase; letter-spacing:0.06em;">Decision log</div>
-      ${[
-        {
-          step: "Ingestion",
-          outcome: `${report.sources?.length || 0} sections retrieved from corpus`,
-        },
-        {
-          step: "Hybrid Retrieval",
-          outcome: "Dense (cosine) + BM25 + RRF fusion applied",
-        },
-        {
-          step: "Cross-encoder Reranking",
-          outcome: "ms-marco-MiniLM-L-6 reranker applied",
-        },
-        {
-          step: "NLI Verification",
-          outcome: `${report.claim_evidence?.length || 0} claims verified via DeBERTa NLI`,
-        },
-        {
-          step: "Paraphrase Stability",
-          outcome: "Claim paraphrases generated and re-verified",
-        },
-        {
-          step: "Edition Conflict Check",
-          outcome:
-            report.edition_conflicts?.length > 0
-              ? `${report.edition_conflicts.length} conflict(s) flagged`
-              : "No conflicts detected",
-        },
-        { step: "Trust Gate", outcome: report.overall_trust_gate },
-        { step: "Report", outcome: "Audit evidence registry compiled" },
-      ]
-        .map(
-          (d) => `
-        <div style="display:flex; gap:12px; padding:8px 0; border-bottom:1px solid var(--border); font-size:13px;">
-          <span style="font-family:var(--mono); color:var(--text-muted); min-width:200px;">${d.step}</span>
-          <span style="color:var(--text);">${d.outcome}</span>
-        </div>
-      `,
-        )
-        .join("")}
-    </div>
-
-    <div>
-      <div style="font-size:11px; color:var(--text-muted); margin-bottom:8px; font-weight:700; text-transform:uppercase; letter-spacing:0.06em;">RAGAS scorecard</div>
-      <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:10px;">
-        ${Object.entries(report.ragas_scorecard || {})
-          .filter(([k]) => k !== "composite_trust_score")
-          .map(
-            ([k, v]) => `
-          <div style="background:var(--surface2); border-radius:8px; padding:12px; text-align:center;">
-            <div style="font-family:var(--mono); font-size:20px; color:var(--text);">${Math.round((v || 0) * 100)}%</div>
-            <div style="font-size:11px; color:var(--text-muted); margin-top:2px; text-transform:uppercase; letter-spacing:0.04em;">${k.replace(/_/g, " ")}</div>
-          </div>
-        `,
-          )
-          .join("")}
-      </div>
-    </div>
-  `;
-      }
-
-      function downloadReport() {
-        if (!lastReport) return;
-        const blob = new Blob([JSON.stringify(lastReport, null, 2)], {
-          type: "application/json",
-        });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = `${lastReport.report_id || "xai-report"}.json`;
-        a.click();
-        URL.revokeObjectURL(url);
-      }
-
-      // ─── Demo BRD ─────────────────────────────────────────────────────────────────
-      function runDemoBRD() {
-        const resultEl = document.getElementById("brd-result");
-        resultEl.style.display = "block";
-
-        const reqs = [
-          {
-            id: "REQ-001",
-            text: "The system shall maintain capital adequacy ratios in line with RBI minimum requirements at all times.",
-            status: "fully_aligned",
-            score: 0.91,
-            section: "FSR §3.2",
-            risk: "Low Risk",
-          },
-          {
-            id: "REQ-002",
-            text: "The credit risk model must incorporate all stress scenarios defined in the latest RBI publication.",
-            status: "partially_aligned",
-            score: 0.58,
-            section: "FSR §4.1",
-            risk: "Medium Risk",
-          },
-          {
-            id: "REQ-003",
-            text: "Payment settlement systems shall comply with real-time gross settlement guidelines.",
-            status: "fully_aligned",
-            score: 0.88,
-            section: "PSR §5.1",
-            risk: "Low Risk",
-          },
-          {
-            id: "REQ-004",
-            text: "The system must use proprietary liquidity scoring not based on RBI guidelines.",
-            status: "contradiction",
-            score: 0.12,
-            section: "FSR §2.1",
-            risk: "Critical — Regulatory Violation",
-          },
-          {
-            id: "REQ-005",
-            text: "Foreign currency exposure must be reported as per the Reserve Bank circulars.",
-            status: "partially_aligned",
-            score: 0.61,
-            section: "FER §3.1",
-            risk: "Medium Risk",
-          },
-        ];
-
-        const overall = reqs.reduce((s, r) => s + r.score, 0) / reqs.length;
-        const aligned = reqs.filter((r) => r.status === "fully_aligned").length;
-        const partial = reqs.filter(
-          (r) => r.status === "partially_aligned",
-        ).length;
-        const violations = reqs.filter(
-          (r) => r.status === "contradiction",
-        ).length;
-
-        resultEl.innerHTML = `
-    <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin-bottom:20px;">
-      <div class="stat-card"><div class="stat-num">${reqs.length}</div><div class="stat-label">Requirements</div></div>
-      <div class="stat-card"><div class="stat-num" style="color:var(--safe);">${aligned}</div><div class="stat-label">Aligned</div></div>
-      <div class="stat-card"><div class="stat-num" style="color:var(--review);">${partial}</div><div class="stat-label">Partial</div></div>
-      <div class="stat-card"><div class="stat-num" style="color:var(--danger);">${violations}</div><div class="stat-label">Violations</div></div>
-    </div>
-    <div style="margin-bottom:16px; padding:16px; background:var(--surface2); border-radius:10px; display:flex; align-items:center; gap:16px;">
-      <div style="font-family:var(--mono); font-size:32px; color:var(--text);">${Math.round(overall * 100)}%</div>
-      <div>
-        <div style="font-weight:700; color:var(--text);">Overall alignment score</div>
-        <div style="font-size:13px; color:var(--text-muted);">Grade: ${overall >= 0.8 ? "A — Fully Compliant" : overall >= 0.6 ? "B — Substantially Compliant" : "C — Partially Compliant"}</div>
-      </div>
-    </div>
-    ${reqs
-      .map((r) => {
-        const g =
-          r.status === "fully_aligned"
-            ? "safe"
-            : r.status === "contradiction"
-              ? "noncompliant"
-              : "review";
-        return `
-      <div style="padding:14px; background:var(--surface2); border-radius:10px; margin-bottom:10px; border-left:3px solid ${g === "safe" ? "var(--safe)" : g === "noncompliant" ? "var(--danger)" : "var(--review)"};">
-        <div style="display:flex; align-items:center; gap:10px; margin-bottom:6px; flex-wrap:wrap;">
-          <span style="font-family:var(--mono); font-size:11px; color:var(--text-muted);">${r.id}</span>
-          <span class="gate-pill ${g}" style="font-size:11px;">${r.risk}</span>
-          <span class="citation">${r.section}</span>
-          <span style="font-family:var(--mono); font-size:11px; color:var(--text-dim);">score ${r.score.toFixed(2)}</span>
-        </div>
-        <div style="font-size:13px; color:var(--text);">${r.text}</div>
-      </div>`;
-      })
-      .join("")}
-  `;
-      }
-
-      async function uploadBrd(file) {
-        const formData = new FormData();
-        formData.append("file", file);
-        return apiRequest("/brd/validate", {
-          method: "POST",
-          body: formData,
-        });
-      }
-
-      function renderBrdResult(data) {
-        const resultEl = document.getElementById("brd-result");
-        resultEl.style.display = "block";
-
-        if (data.error) {
-          resultEl.innerHTML = `<div class="card" style="border-color:rgba(239,68,68,0.35);">${data.error}</div>`;
-          return;
-        }
-
-        const summary = data.summary || {
-          aligned: 0,
-          partial: 0,
-          gaps: 0,
-          violations: 0,
-        };
-        const rows = data.requirements || [];
-        const totalRequirements = data.total_requirements || 0;
-        const grade = data.compliance_grade || "N/A";
-        const overallPct = Math.round(
-          (data.overall_alignment_score || 0) * 100,
-        );
-
-        const nliScores = rows
-          .map((r) => r.alignment?.nli_result?.entailment_score)
-          .filter((v) => typeof v === "number");
-        const avgNli = nliScores.length
-          ? Math.round(
-              (nliScores.reduce((a, b) => a + b, 0) / nliScores.length) * 100,
-            )
-          : null;
-
-        const statusMeta = {
-          fully_aligned: { label: "Fully aligned", cls: "safe" },
-          partially_aligned: { label: "Partially aligned", cls: "review" },
-          gap: { label: "Gap", cls: "review" },
-          contradiction: { label: "Contradiction", cls: "noncompliant" },
-        };
-
-        resultEl.innerHTML = `
-    <div style="margin-bottom:14px; padding:14px 16px; background:var(--surface2); border:1px solid var(--border); border-radius:10px; display:flex; flex-wrap:wrap; gap:12px; align-items:center; justify-content:space-between;">
-      <div>
-        <div style="font-size:11px; color:var(--text-dim); text-transform:uppercase; letter-spacing:0.06em; font-weight:700;">BRD file</div>
-        <div style="font-size:14px; color:var(--text); font-weight:700;">${data.brd_filename || "Uploaded document"}</div>
-      </div>
-      <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
-        <span class="gate-pill ${grade.startsWith("A") ? "safe" : grade.startsWith("D") ? "noncompliant" : "review"}" style="font-size:11px;">${grade}</span>
-        <span style="font-family:var(--mono); font-size:12px; color:var(--text-muted);">overall ${overallPct}%</span>
-        ${avgNli !== null ? `<span style="font-family:var(--mono); font-size:12px; color:var(--text-muted);">avg entailment ${avgNli}%</span>` : ""}
-      </div>
-    </div>
-
-    <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin-bottom:20px;">
-      <div class="stat-card"><div class="stat-num">${totalRequirements}</div><div class="stat-label">Requirements</div></div>
-      <div class="stat-card"><div class="stat-num" style="color:var(--safe);">${summary.aligned}</div><div class="stat-label">Aligned</div></div>
-      <div class="stat-card"><div class="stat-num" style="color:var(--review);">${summary.partial}</div><div class="stat-label">Partial</div></div>
-      <div class="stat-card"><div class="stat-num" style="color:var(--danger);">${summary.violations}</div><div class="stat-label">Violations</div></div>
-    </div>
-
-    <div style="display:grid; grid-template-columns:repeat(2,1fr); gap:10px; margin-bottom:16px;">
-      <div class="card" style="padding:12px 14px; border-radius:10px;">
-        <div style="font-size:11px; color:var(--text-dim); text-transform:uppercase; letter-spacing:0.06em; font-weight:700; margin-bottom:6px;">Coverage diagnostics</div>
-        <div style="font-size:13px; color:var(--text);">Gaps: <strong>${summary.gaps || 0}</strong> · Violations: <strong>${summary.violations || 0}</strong></div>
-        <div style="font-size:12px; color:var(--text-muted); margin-top:4px;">Higher gap/violation counts indicate weaker policy-to-regulation mapping coverage.</div>
-      </div>
-      <div class="card" style="padding:12px 14px; border-radius:10px;">
-        <div style="font-size:11px; color:var(--text-dim); text-transform:uppercase; letter-spacing:0.06em; font-weight:700; margin-bottom:6px;">Actionability</div>
-        <div style="font-size:13px; color:var(--text);">Each requirement now includes mapped section, NLI evidence, and remediation guidance.</div>
-        <div style="font-size:12px; color:var(--text-muted); margin-top:4px;">Use remediation text directly for BRD updates and legal/compliance review notes.</div>
-      </div>
-    </div>
-
-    <div style="margin-bottom:16px; padding:16px; background:var(--surface2); border-radius:10px; display:flex; align-items:center; gap:16px;">
-      <div style="font-family:var(--mono); font-size:32px; color:var(--text);">${overallPct}%</div>
-      <div>
-        <div style="font-weight:700; color:var(--text);">Overall alignment score</div>
-        <div style="font-size:13px; color:var(--text-muted);">Grade: ${grade}</div>
-      </div>
-    </div>
-    ${rows
-      .map((r) => {
-        const status = r.alignment?.alignment_status || "gap";
-        const score = r.alignment?.alignment_score || 0;
-        const statusCfg = statusMeta[status] || statusMeta.gap;
-        const riskClass =
-          status === "fully_aligned"
-            ? "safe"
-            : status === "contradiction"
-              ? "noncompliant"
-              : "review";
-        const mapped = r.alignment?.mapped_section || {};
-        const matched = mapped.section_id
-          ? mapped
-          : (r.matched_sections || [])[0] || {};
-        const nli = r.alignment?.nli_result || {};
-        const entailPct =
-          typeof nli.entailment_score === "number"
-            ? Math.round(nli.entailment_score * 100)
-            : null;
-        const contrPct =
-          typeof nli.contradiction_score === "number"
-            ? Math.round(nli.contradiction_score * 100)
-            : null;
-        const topMatches = (r.matched_sections || []).slice(0, 3);
-        const evidenceRows = (r.alignment?.evaluated_matches || []).slice(0, 3);
-        return `
-        <div style="padding:14px; background:var(--surface2); border-radius:10px; margin-bottom:10px; border-left:3px solid ${riskClass === "safe" ? "var(--safe)" : riskClass === "noncompliant" ? "var(--danger)" : "var(--review)"};">
-          <div style="display:flex; align-items:center; gap:10px; margin-bottom:6px; flex-wrap:wrap;">
-            <span style="font-family:var(--mono); font-size:11px; color:var(--text-muted);">${r.req_id}</span>
-            <span class="gate-pill ${riskClass}" style="font-size:11px;">${statusCfg.label}</span>
-            <span class="citation">${matched.pub_name || "N/A"} | ${matched.edition || "N/A"} | §${matched.section_id || "N/A"}</span>
-            <span style="font-family:var(--mono); font-size:11px; color:var(--text-dim);">score ${score.toFixed(2)}</span>
-            ${entailPct !== null ? `<span style="font-family:var(--mono); font-size:11px; color:var(--text-dim);">entail ${entailPct}%</span>` : ""}
-            ${contrPct !== null ? `<span style="font-family:var(--mono); font-size:11px; color:var(--text-dim);">contr ${contrPct}%</span>` : ""}
-            <span class="gate-pill ${riskClass}" style="font-size:11px;">${r.alignment?.risk_label || "Risk unknown"}</span>
-          </div>
-          <div style="font-size:13px; color:var(--text);">${r.text}</div>
-          <div style="font-size:12px; color:var(--text-muted); margin-top:6px;">${r.alignment?.reasoning || ""}</div>
-
-          ${
-            r.remediation && r.remediation !== "No remediation required."
-              ? `
-            <div style="margin-top:8px; padding:10px; border-radius:8px; background:rgba(180,83,9,0.08); border:1px solid rgba(180,83,9,0.18);">
-              <div style="font-size:11px; text-transform:uppercase; letter-spacing:0.06em; font-weight:700; color:var(--review); margin-bottom:4px;">Remediation</div>
-              <div style="font-size:12px; color:var(--text);">${r.remediation}</div>
+          renderResults('rag-output', formatted, true);
+        } catch (e) {
+          const container = document.getElementById('rag-output');
+          container.style.display = 'block';
+          container.innerHTML = `
+            <div class="card" style="border-color: var(--verify-border); background: var(--verify-bg);">
+              <div style="color: #f87171; font-weight: 700; font-size: 16px; margin-bottom: 6px;">❌ Query Error</div>
+              <p style="color: #fca5a5; font-size: 14px;">${e.message}</p>
             </div>
-          `
-              : ""
-          }
-
-          ${
-            topMatches.length
-              ? `
-            <details style="margin-top:8px;">
-              <summary style="cursor:pointer; font-size:12px; color:var(--text-muted);">Top matched sections (${topMatches.length})</summary>
-              <div style="margin-top:6px; display:flex; flex-direction:column; gap:6px;">
-                ${topMatches
-                  .map(
-                    (m) => `
-                    <div style="padding:8px; border-radius:8px; background:var(--surface); border:1px solid var(--border);">
-                      <div style="font-size:12px; color:var(--text); font-weight:700;">${m.pub_name} | ${m.edition} | §${m.section_id} ${m.edition_conflict_flag ? "[edition conflict]" : ""}</div>
-                      <div style="font-size:11px; color:var(--text-muted);">${m.section_title || ""} | rerank ${typeof m.rerank_score === "number" ? m.rerank_score.toFixed(2) : "N/A"}</div>
-                      <div style="font-size:11px; color:var(--text-dim); margin-top:4px;">${(m.text_preview || "").slice(0, 180)}${(m.text_preview || "").length > 180 ? "..." : ""}</div>
-                    </div>
-                  `,
-                  )
-                  .join("")}
-              </div>
-            </details>
-          `
-              : ""
-          }
-
-          ${
-            evidenceRows.length
-              ? `
-            <details style="margin-top:8px;">
-              <summary style="cursor:pointer; font-size:12px; color:var(--text-muted);">Scoring evidence (${evidenceRows.length} evaluated)</summary>
-              <div style="margin-top:6px; display:flex; flex-direction:column; gap:6px;">
-                ${evidenceRows
-                  .map(
-                    (ev, idx) => `
-                    <div style="padding:8px; border-radius:8px; background:var(--surface); border:1px solid var(--border);">
-                      <div style="display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:4px;">
-                        <span style="font-family:var(--mono); font-size:11px; color:var(--text-muted);">#${idx + 1}</span>
-                        <span style="font-size:12px; color:var(--text); font-weight:700;">${ev.pub_name || "N/A"} | ${ev.edition || "N/A"} | §${ev.section_id || "N/A"}</span>
-                        <span class="citation">blended ${(typeof ev.blended_score === "number" ? ev.blended_score : 0).toFixed(2)}</span>
-                      </div>
-                      <div style="font-family:var(--mono); font-size:11px; color:var(--text-dim); display:flex; flex-wrap:wrap; gap:10px;">
-                        <span>entail ${(typeof ev.entailment_score === "number" ? ev.entailment_score : 0).toFixed(2)}</span>
-                        <span>contr ${(typeof ev.contradiction_score === "number" ? ev.contradiction_score : 0).toFixed(2)}</span>
-                        <span>lexical ${(typeof ev.lexical_overlap === "number" ? ev.lexical_overlap : 0).toFixed(2)}</span>
-                        <span>rerank ${(typeof ev.rerank_norm === "number" ? ev.rerank_norm : 0).toFixed(2)}</span>
-                      </div>
-                    </div>
-                  `,
-                  )
-                  .join("")}
-              </div>
-            </details>
-          `
-              : ""
-          }
-        </div>
-      `;
-      })
-      .join("")}
-  `;
-      }
-
-      // ─── Init ─────────────────────────────────────────────────────────────────────
-      window.addEventListener("DOMContentLoaded", () => {
-        syncCorpusStats(true);
-
-        const brdInput = document.getElementById("brd-input");
-        brdInput.addEventListener("change", async () => {
-          const file = brdInput.files && brdInput.files[0];
-          if (!file) return;
-
-          const resultEl = document.getElementById("brd-result");
-          resultEl.style.display = "block";
-          resultEl.innerHTML =
-            '<div class="card">Validating BRD against ingested RBI corpus...</div>';
-
-          try {
-            const data = await uploadBrd(file);
-            renderBrdResult(data);
-          } catch (err) {
-            resultEl.innerHTML = `<div class="card" style="border-color:rgba(239,68,68,0.35);">BRD validation failed: ${err.message}</div>`;
-          }
-        });
-
-        // Animate score bars after load
-        setTimeout(() => {
-          document.querySelectorAll(".score-bar-fill").forEach((bar) => {
-            const target = bar.style.width;
-            bar.style.width = "0%";
-            setTimeout(() => {
-              bar.style.width = target;
-            }, 100);
-          });
-        }, 100);
-      });
-
-      // ─── Scroll Reveal Effect ──────────────────────────────────────────────────────
-      function initScrollReveal() {
-        // Wait for GSAP to load
-        if (typeof gsap === "undefined") {
-          setTimeout(initScrollReveal, 50);
-          return;
+          `;
+        } finally {
+          btn.disabled = false;
+          btn.innerHTML = `<span>🔍 Search & Label Reliability</span>`;
         }
-
-        gsap.registerPlugin(ScrollTrigger);
-
-        const elements = document.querySelectorAll(".scroll-reveal");
-        let processedCount = 0;
-
-        elements.forEach((el) => {
-          // Skip if not visible
-          if (!el.offsetParent && el.offsetParent !== document.body) {
-            return;
-          }
-
-          // Skip if already processed
-          if (el.dataset.scrollRevealInit) return;
-          el.dataset.scrollRevealInit = "true";
-          processedCount++;
-
-          // Split text into word spans
-          const words = text.split(/\s+/);
-          el.innerHTML = "";
-
-          words.forEach((word, idx) => {
-            const span = document.createElement("span");
-            span.className = "scroll-reveal-word";
-            span.textContent = word;
-            el.appendChild(span);
-            if (idx < words.length - 1) {
-              el.appendChild(document.createTextNode(" "));
-            }
-          });
-
-          const wordSpans = el.querySelectorAll(".scroll-reveal-word");
-
-          // Only animate if element is actually visible
-          if (el.offsetHeight > 0) {
-            // Fade in and blur effect on words
-            gsap.fromTo(
-              wordSpans,
-              {
-                opacity: 0.15,
-                filter: "blur(6px)",
-              },
-              {
-                opacity: 1,
-                filter: "blur(0px)",
-                stagger: 0.08,
-                duration: 1.2,
-                ease: "power2.out",
-                scrollTrigger: {
-                  trigger: el,
-                  start: "top 80%",
-                  end: "top 30%",
-                  scrub: 1,
-                  once: false,
-                },
-              },
-            );
-          }
-        });
-
-        console.log(
-          "Scroll reveal initialized for " + processedCount + " elements",
-        );
       }
 
-      // Initialize after page fully loads
-      if (document.readyState === "loading") {
-        document.addEventListener("DOMContentLoaded", () => {
-          setTimeout(initScrollReveal, 200);
-        });
-      } else {
-        setTimeout(initScrollReveal, 200);
-      }
-
-      // Re-initialize when tabs are switched
-      const origSwitchTab = window.switchTab;
-      window.switchTab = function (tabName) {
-        origSwitchTab(tabName);
-        setTimeout(initScrollReveal, 100);
-      };
-
-      function initDockRow(containerSelector, itemSelector, options = {}) {
-        const container = document.querySelector(containerSelector);
-        if (!container || container.dataset.dockInit === "true") {
-          return;
-        }
-
-        const items = Array.from(container.querySelectorAll(itemSelector));
-        if (!items.length) {
-          return;
-        }
-
-        const maxScale = options.maxScale ?? 1.18;
-        const maxLift = options.maxLift ?? 8;
-        const radius = options.radius ?? 120;
-
-        container.dataset.dockInit = "true";
-        container.style.overflow = "visible";
-
-        let rafId = 0;
-
-        const resetItems = () => {
-          items.forEach((item) => {
-            item.style.transform = "";
-            item.style.zIndex = "";
-          });
-        };
-
-        const applyDock = (clientX) => {
-          if (rafId) {
-            cancelAnimationFrame(rafId);
-          }
-
-          rafId = requestAnimationFrame(() => {
-            const containerRect = container.getBoundingClientRect();
-            const localX = clientX - containerRect.left;
-
-            items.forEach((item) => {
-              const rect = item.getBoundingClientRect();
-              const centerX = rect.left - containerRect.left + rect.width / 2;
-              const distance = Math.abs(localX - centerX);
-              const influence = Math.max(0, 1 - distance / radius);
-              const scale = 1 + influence * (maxScale - 1);
-              const lift = influence * maxLift;
-
-              item.style.transform = `translateY(${-lift}px) scale(${scale})`;
-              item.style.zIndex = String(Math.round(influence * 100) + 1);
-            });
-          });
-        };
-
-        container.addEventListener("pointermove", (event) => {
-          applyDock(event.clientX);
-        });
-
-        container.addEventListener("pointerleave", () => {
-          if (rafId) {
-            cancelAnimationFrame(rafId);
-            rafId = 0;
-          }
-          resetItems();
-        });
-      }
-
-      window.addEventListener("DOMContentLoaded", () => {
-        initDockRow(".hero-badges", ".badge", {
-          maxScale: 1.22,
-          maxLift: 10,
-          radius: 140,
-        });
-        initDockRow(".tabs", ".tab", {
-          maxScale: 1.16,
-          maxLift: 6,
-          radius: 110,
-        });
-      });
+      // Initialize samples on page load
+      document.addEventListener('DOMContentLoaded', fetchSampleScenarios);
     </script>
   </body>
 </html>

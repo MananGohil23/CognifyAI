@@ -75,6 +75,11 @@ def _heuristic_entailment(premise: str, hypothesis: str) -> dict | None:
     if not p_tokens or not h_tokens:
         return None
 
+    ungrounded = h_tokens - p_tokens
+    # If hypothesis introduces novel entities/content words not in premise, defer to model
+    if len(ungrounded) >= 1:
+        return None
+
     overlap = len(p_tokens & h_tokens)
     precision = overlap / max(len(h_tokens), 1)
 
@@ -82,8 +87,8 @@ def _heuristic_entailment(premise: str, hypothesis: str) -> dict | None:
     h_nums = _number_set(hypothesis)
     num_overlap = len(p_nums & h_nums)
 
-    # Strong extractive match: many shared content words + matching numbers.
-    if (precision >= 0.55) or (precision >= 0.4 and num_overlap >= 1):
+    # Strong extractive match: virtually all content words + matching numbers present in premise
+    if precision >= 0.85 or (precision >= 0.70 and num_overlap >= 1):
         return {
             "label": "entailed",
             "entailment_score": 0.92,

@@ -9,12 +9,16 @@ Key responsibilities:
   - Upsert chunks into ChromaDB with full metadata
 """
 
+import os
 import re
 import hashlib
 import logging
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
+
+os.environ["ANONYMIZED_TELEMETRY"] = "False"
+os.environ["CHROMA_TELEMETRY__ANONYMIZED_TELEMETRY"] = "False"
 
 import pdfplumber
 import docx as python_docx
@@ -123,43 +127,58 @@ def extract_text(path: Path) -> str:
 
 def detect_publication(text: str, filename: str) -> str:
     """
-    Determine which of the four RBI publications this document belongs to.
-    Checks filename first, then scans the first 2000 chars of text.
-    Returns one of: FSR | MPR | PSR | FER
-    Raises ValueError if unrecognised.
+    Determine document/publication type or name.
+    1. Checks if known publication acronyms (FSR, MPR, PSR, FER) or patterns match.
+    2. Otherwise, derives a clean, readable identifier from the filename stem or document heading.
+    Never rejects or raises an error — fully accepts any PDF, DOCX, or text file.
     """
-    fname_upper = filename.upper()
+    fname = Path(filename).stem
+    fname_upper = fname.upper()
+
+    # Check for known standard publications if present
     for pub in ALLOWED_PUBLICATIONS:
         if pub in fname_upper:
             return pub
 
-    sample = text[:2000].lower()
+    sample = text[:2000].lower() if text else ""
     for pub, pattern in PUBLICATION_PATTERNS.items():
         if re.search(pattern, sample):
             return pub
 
-    raise ValueError(
-        f"Cannot identify publication type from '{filename}'. "
-        f"Must be one of {ALLOWED_PUBLICATIONS}. "
-        f"Ensure the filename or document title contains the publication acronym."
-    )
+    # General document fallback: derive clean identifier from filename
+    clean_name = re.sub(r"[^A-Za-z0-9_\-\s]", "", fname).strip()
+    clean_name = re.sub(r"[\s\-]+", "_", clean_name).upper()
+    if clean_name:
+        return clean_name[:24]
+
+    # Try extracting title from first non-empty line
+    if text:
+        first_line = text.strip().split("\n")[0].strip()
+        if first_line:
+            clean_title = re.sub(r"[^A-Za-z0-9_\-\s]", "", first_line).strip()
+            clean_title = re.sub(r"[\s\-]+", "_", clean_title).upper()
+            if clean_title:
+                return clean_title[:24]
+
+    return "DOC"
 
 
 def detect_edition_date(text: str, filename: str) -> str:
     """
-    Extract edition date (e.g. 'June 2023', 'December 2022').
-    Falls back to current year if not found.
+    Extract edition, date, or version (e.g. 'June 2023', '2024', 'v1.0').
+    Falls back to current date if not explicitly specified.
     """
     patterns = [
         r"\b(January|February|March|April|May|June|July|August|September|October|November|December)\s+(20\d{2})\b",
         r"\b(20\d{2})\b",
+        r"\bv(?:ersion)?\s*(\d+(?:\.\d+)*)\b",
     ]
-    sample = filename + " " + text[:3000]
+    sample = filename + " " + (text[:3000] if text else "")
     for pat in patterns:
-        m = re.search(pat, sample)
+        m = re.search(pat, sample, re.IGNORECASE)
         if m:
-            return m.group(0)
-    return str(datetime.now().year)
+            return m.group(0).strip()
+    return datetime.now().strftime("%B %Y")
 
 
 # ---------------------------------------------------------------------------
