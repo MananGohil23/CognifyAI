@@ -3,6 +3,10 @@ main.py — XAI Governance Framework
 FastAPI application exposing all pipeline endpoints.
 """
 
+from ingestion import get_collection
+from brd_engine import validate_brd
+from trust_gate import run_full_pipeline
+from ingestion import ingest_document
 import logging
 import tempfile
 from pathlib import Path
@@ -16,12 +20,11 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from dotenv import load_dotenv
 
-from ingestion import ingest_document
-from trust_gate import run_full_pipeline
-from brd_engine import validate_brd
-from ingestion import get_collection
+# Load environment variables before importing local modules
+# that may read settings at import time.
+# override=True prevents stale shell vars from shadowing .env values.
+load_dotenv(override=True)
 
-load_dotenv()
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 

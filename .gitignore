@@ -1,0 +1,10 @@
+# Secrets
+.env
+
+# Python cache/artifacts
+__pycache__/
+*.py[cod]
+
+# Local vector store and uploaded source files
+chroma_db/
+uploads/

@@ -22,10 +22,6 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 
 RERANKER_MODEL = "cross-encoder/ms-marco-MiniLM-L-6-v2"
-LLM_MODEL = os.getenv("GROQ_MODEL") or os.getenv(
-    "GROK_MODEL", "llama-3.1-8b-instant")
-LLM_BASE_URL = os.getenv("GROQ_BASE_URL") or os.getenv(
-    "GROK_BASE_URL", "https://api.groq.com/openai/v1")
 TOP_K_DENSE = 20   # initial dense retrieval pool
 TOP_K_SPARSE = 20  # BM25 candidates
 TOP_K_RERANK = 8   # after reranking
@@ -198,12 +194,19 @@ def generate_with_attribution(query: str, context_hits: list[dict]) -> dict:
 
     context_str = "\n\n---\n\n".join(context_blocks)
 
-    llm_api_key = os.getenv("GROQ_API_KEY") or os.getenv("GROK_API_KEY")
+    llm_model = os.getenv("GROQ_MODEL") or os.getenv(
+        "GROK_MODEL", "groq/compound-mini")
+    llm_base_url = os.getenv("GROQ_BASE_URL") or os.getenv(
+        "GROK_BASE_URL", "https://api.groq.com/openai/v1")
+
+    llm_api_key = (os.getenv("GROQ_API_KEY")
+                   or os.getenv("GROK_API_KEY") or "").strip()
+    llm_api_key = llm_api_key.strip('"').strip("'")
     if not llm_api_key:
         raise ValueError(
             "GROQ_API_KEY is not set. Please set it before querying.")
 
-    client = OpenAI(api_key=llm_api_key, base_url=LLM_BASE_URL)
+    client = OpenAI(api_key=llm_api_key, base_url=llm_base_url)
     user_prompt = (
         f"QUERY: {query}\n\n"
         f"SOURCES:\n{context_str}\n\n"
@@ -213,7 +216,7 @@ def generate_with_attribution(query: str, context_hits: list[dict]) -> dict:
     )
 
     response = client.chat.completions.create(
-        model=LLM_MODEL,
+        model=llm_model,
         messages=[
             {"role": "system", "content": SYSTEM_PROMPT},
             {"role": "user", "content": user_prompt},
@@ -235,7 +238,7 @@ def generate_with_attribution(query: str, context_hits: list[dict]) -> dict:
             "Do not include any sentence without citation."
         )
         retry = client.chat.completions.create(
-            model=LLM_MODEL,
+            model=llm_model,
             messages=[
                 {"role": "system", "content": SYSTEM_PROMPT},
                 {"role": "user", "content": retry_prompt},
@@ -251,7 +254,7 @@ def generate_with_attribution(query: str, context_hits: list[dict]) -> dict:
     return {
         "answer": raw_answer,
         "claims": claims,
-        "model": LLM_MODEL,
+        "model": llm_model,
         "sources_used": len(context_hits),
     }
 
