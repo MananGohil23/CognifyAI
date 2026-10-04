@@ -46,7 +46,7 @@ SECTION_HEADING_RE = re.compile(
     re.IGNORECASE | re.MULTILINE,
 )
 
-CHROMA_PERSIST_DIR = "./chroma_db"
+CHROMA_PERSIST_DIR = os.getenv("CHROMA_PERSIST_DIR", "./chroma_db")
 COLLECTION_NAME = "rbi_publications"
 EMBED_MODEL = "all-MiniLM-L6-v2"
 

@@ -173,6 +173,14 @@ def apply_trust_gate(
     sc = ragas_scorecard
     t = TRUST_THRESHOLDS
 
+    # With no verifiable claims there is no evidence to certify as Safe.
+    if not verified_claims:
+        return {
+            "overall_gate": "Needs Human Review",
+            "reasoning": "No verifiable claims were produced; answer cannot be certified as grounded.",
+            "per_claim_gates": [],
+        }
+
     # Per-claim gates (already set by hallucination_detector)
     per_claim = [
         {
@@ -581,11 +589,6 @@ def run_full_pipeline(
             deduped[(c["pub_name"], c["section_id"])] = c
         return list(deduped.values())
 
-    def _to_external_gate(gate: str) -> str:
-        if gate == "Needs Human Review":
-            return "Needs Review"
-        return gate
-
     def _infer_claims_from_answer(answer_text: str, chunks: list[dict], max_claims: int = 5) -> list[dict]:
         """
         Fallback when model omits citation tags.
@@ -757,9 +760,11 @@ def run_full_pipeline(
         return {
             "session_id": session_id,
             "answer": fallback_answer,
-            "trust_gate": _to_external_gate(gate_result["overall_gate"]),
+            "trust_gate": gate_result["overall_gate"],
             "ragas_scorecard": scorecard,
             "report": report,
+            "verified_claims": [],
+            "retrieved_chunks": [],
         }
 
     # 2) Answer generation with attribution
@@ -877,7 +882,9 @@ def run_full_pipeline(
     return {
         "session_id": session_id,
         "answer": answer,
-        "trust_gate": _to_external_gate(gate_result["overall_gate"]),
+        "trust_gate": gate_result["overall_gate"],
         "ragas_scorecard": scorecard,
         "report": report,
+        "verified_claims": verified,
+        "retrieved_chunks": retrieved_chunks,
     }

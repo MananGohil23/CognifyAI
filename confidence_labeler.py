@@ -19,13 +19,39 @@ from hallucination_detector import check_entailment
 logger = logging.getLogger(__name__)
 
 
+_CLAUSE_SPLIT_RE = re.compile(
+    r"\s+(?:and|but|while|whereas|however|yet)\s+", re.IGNORECASE)
+
+
+def _looks_like_clause(part: str) -> bool:
+    """Heuristic: a clause must have enough words to be an atomic claim."""
+    return len(part.split()) >= 3
+
+
 def _split_into_sentences(text: str) -> list[str]:
-    """Split text into distinct sentences for claim-level verification."""
+    """
+    Split text into sentence-level claims for verification.
+
+    Compound sentences are further split on coordinating conjunctions
+    (e.g. "... in 1991 and is maintained by X") so that supported and
+    unsupported clauses are scored independently instead of being judged
+    as a single (often contradicted) claim.
+    """
     if not text:
         return []
-    # Split on sentence boundaries
     sentences = re.split(r"(?<=[.!?])\s+", text.strip())
-    return [s.strip() for s in sentences if s.strip()]
+    claims: list[str] = []
+    for sentence in sentences:
+        sentence = sentence.strip()
+        if not sentence:
+            continue
+        parts = [p.strip()
+                 for p in _CLAUSE_SPLIT_RE.split(sentence) if p.strip()]
+        if len(parts) > 1 and all(_looks_like_clause(p) for p in parts):
+            claims.extend(parts)
+        else:
+            claims.append(sentence)
+    return claims
 
 
 def calculate_semantic_perplexity(label_scores: list[dict]) -> float:
@@ -193,10 +219,21 @@ def evaluate_qa_reliability(
     trust_score = round(max(0.02, min(0.99, (100.0 - uncertainty_score) / 100.0)), 2)
 
     # Determine Reliability Tag & Short Reason
-    if contradiction_cnt > 0:
+    if contradiction_cnt > 0 and entailed_cnt == 0:
         reliability_tag = "Needs Verification"
         warnings.append(f"Contradiction detected: {contradiction_cnt} claim(s) directly conflict with the source text.")
         short_reason = f"The generated answer contains facts that contradict the provided source passage ({contradiction_cnt} contradiction found)."
+
+    elif contradiction_cnt > 0:
+        reliability_tag = "Uncertain"
+        warnings.append(
+            f"Mixed evidence: {contradiction_cnt} claim(s) conflict with the source while "
+            f"{entailed_cnt} claim(s) remain grounded."
+        )
+        short_reason = (
+            f"Answer mixes grounded and contradicted statements "
+            f"({entailed_cnt} entailed / {contradiction_cnt} contradicted). Human verification recommended."
+        )
 
     elif faithfulness >= 0.80 and perplexity <= 2.80:
         reliability_tag = "Certain"

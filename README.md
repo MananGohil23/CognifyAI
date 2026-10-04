@@ -26,7 +26,7 @@ uvicorn main:app --reload --reload-exclude .venv --reload-exclude chroma_db --po
 ## Environment Variables
 ```
 GROQ_API_KEY=gsk_...
-GROQ_MODEL=groq/compound-mini
+GROQ_MODEL=openai/gpt-oss-120b
 GROQ_BASE_URL=https://api.groq.com/openai/v1
 CHROMA_PERSIST_DIR=./chroma_db
 ```

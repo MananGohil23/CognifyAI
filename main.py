@@ -42,11 +42,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Serve static files (HTML, CSS, JS, etc.) from the project root
+# Serve only user-uploaded source files (never the project root / .env / source).
 static_dir = Path(__file__).parent
-app.mount("/static", StaticFiles(directory=static_dir, html=True), name="static")
 uploads_dir = static_dir / "uploads"
 uploads_dir.mkdir(parents=True, exist_ok=True)
+app.mount("/static/uploads", StaticFiles(directory=uploads_dir), name="static-uploads")
 
 # In-memory report store
 _reports: dict[str, dict] = {}
@@ -233,8 +233,7 @@ async def query_endpoint(req: QueryRequest):
     if scorecard.get("edition_conflict_risk", 0) > 0.2:
         warnings.append("Potential source document conflict detected.")
 
-    report = result.get("report", {})
-    verified_claims = report.get("verified_claims", [])
+    verified_claims = result.get("verified_claims", [])
     claim_breakdown = []
     for c in verified_claims:
         nli = c.get("nli_result") or {}
@@ -251,7 +250,7 @@ async def query_endpoint(req: QueryRequest):
             "reasoning": c.get("reasoning", f"Trust gate: {c.get('final_trust_gate', 'Needs Human Review')}")
         })
 
-    retrieved = report.get("retrieved_chunks", [])
+    retrieved = result.get("retrieved_chunks", [])
 
     return QueryResponse(
         session_id=session_id,

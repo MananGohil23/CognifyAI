@@ -6,6 +6,7 @@ Every generated claim is attributed to: publication · edition · section_id · 
 
 import logging
 import os
+import re
 from functools import lru_cache
 
 import numpy as np
@@ -203,7 +204,7 @@ def generate_with_attribution(query: str, context_hits: list[dict]) -> dict:
     context_str = "\n\n---\n\n".join(context_blocks)
 
     llm_model = os.getenv("GROQ_MODEL") or os.getenv(
-        "GROK_MODEL", "groq/compound-mini")
+        "GROK_MODEL", "openai/gpt-oss-120b")
     llm_base_url = os.getenv("GROQ_BASE_URL") or os.getenv(
         "GROK_BASE_URL", "https://api.groq.com/openai/v1")
 
@@ -289,7 +290,6 @@ def _parse_claims(answer: str, context_hits: list[dict]) -> list[dict]:
     Extract individual claims and their citations from the answer.
     Returns list of {sentence, pub_name, edition, section_id, source_text, metadata}.
     """
-    import re
     answer = (answer or "").replace("Â·", "·").replace("Â§", "§")
     citation_re = re.compile(
         r"(?P<sentence>[^\n\[]+?)\s*"
